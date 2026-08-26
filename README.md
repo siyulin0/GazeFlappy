@@ -1,6 +1,6 @@
 # Gaze Flappy | 视线飞鸟
 
-[Play online / 在线体验](https://siyulin0.github.io/GazeWing/)
+[Play online / 在线体验](https://siyulin0.github.io/GazeFlappy/)
 
 ## English
 
@@ -20,7 +20,7 @@ Friends can play from the hosted link without installing anything or running a l
 
 ### Play online
 
-Open [https://siyulin0.github.io/GazeWing/](https://siyulin0.github.io/GazeWing/), click **Enable Eye Tracking**, and allow camera access.
+Open [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/), click **Enable Eye Tracking**, and allow camera access.
 
 ### Run locally
 
@@ -122,7 +122,7 @@ Gaze Flappy（视线飞鸟）是一款实验性浏览器游戏，用于探索将
 
 ### 在线体验
 
-打开 [https://siyulin0.github.io/GazeWing/](https://siyulin0.github.io/GazeWing/)，点击 **Enable Eye Tracking（启用眼动追踪）**，然后允许浏览器使用摄像头。
+打开 [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/)，点击 **Enable Eye Tracking（启用眼动追踪）**，然后允许浏览器使用摄像头。
 
 ### 本地运行
 
