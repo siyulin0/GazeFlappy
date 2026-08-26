@@ -12,7 +12,11 @@ class BlinkController {
   constructor({onBlink, onUpdate}) {
     this.onBlink = onBlink;
     this.onUpdate = onUpdate;
-    this.landmarker = null;
+    this.runtimeFrame = null;
+    this.runtimeReady = null;
+    this.runtimeMessageHandler = null;
+    this.processing = false;
+    this.sessionId = 0;
     this.video = null;
     this.active = false;
     this.loopId = 0;
@@ -29,27 +33,49 @@ class BlinkController {
   }
 
   async initialize() {
-    if (this.landmarker) return;
-    const {FaceLandmarker, FilesetResolver} = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/+esm');
-    const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm');
-    const options = {
-      baseOptions: {
-        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-        delegate: 'GPU'
-      },
-      runningMode: 'VIDEO',
-      numFaces: 1,
-      outputFaceBlendshapes: true,
-      minFaceDetectionConfidence: 0.5,
-      minFacePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    };
+    if (this.runtimeReady) return this.runtimeReady;
+    this.runtimeReady = new Promise((resolve,reject) => {
+      this.runtimeFrame = document.createElement('iframe');
+      this.runtimeFrame.hidden = true;
+      this.runtimeFrame.setAttribute('aria-hidden','true');
+      this.runtimeFrame.src = new URL('blink-runtime.html',document.baseURI);
+      let ready = false;
+      this.runtimeMessageHandler = ({data,source,origin}) => {
+        if (source !== this.runtimeFrame?.contentWindow || origin !== location.origin || data.source !== 'blink-runtime') return;
+        if (data.type === 'ready') { ready=true; resolve(); return; }
+        if (data.type === 'error') {
+          if (!ready) reject(new Error(data.message));
+          else console.error('Blink worker failed:', data.message);
+          return;
+        }
+        if (data.type === 'scores') {
+          if (data.sessionId !== this.sessionId) return;
+          this.processing=false;
+          if (!this.active) return;
+          this.processScores(data.left,data.right,data.timestamp);
+          return;
+        }
+        if (data.type === 'frame-error') {
+          if (data.sessionId !== this.sessionId) return;
+          this.processing=false;
+          if (this.active) this.processTrackingLoss(data.timestamp);
+          console.error('Blink inference failed:', data.message);
+        }
+      };
+      addEventListener('message',this.runtimeMessageHandler);
+      this.runtimeFrame.addEventListener('load',()=>this.runtimeFrame.contentWindow.postMessage({type:'init'},location.origin),{once:true});
+      this.runtimeFrame.addEventListener('error',()=>reject(new Error('Blink runtime failed to load.')),{once:true});
+      document.body.appendChild(this.runtimeFrame);
+    });
     try {
-      this.landmarker = await FaceLandmarker.createFromOptions(vision, options);
+      return await this.runtimeReady;
     } catch (error) {
-      console.warn('MediaPipe GPU setup failed; falling back to CPU.', error);
-      options.baseOptions.delegate = 'CPU';
-      this.landmarker = await FaceLandmarker.createFromOptions(vision, options);
+      removeEventListener('message',this.runtimeMessageHandler);
+      this.runtimeFrame?.remove();
+      this.runtimeFrame=null;
+      this.runtimeReady=null;
+      this.runtimeMessageHandler=null;
+      throw error;
     }
   }
 
@@ -71,6 +97,7 @@ class BlinkController {
   }
 
   reset(resetCount=true) {
+    this.sessionId++;
     this.state = 'OPEN';
     this.armed = false;
     this.closedSince = 0;
@@ -78,21 +105,26 @@ class BlinkController {
     this.lastInferenceAt = 0;
     this.lastVideoTime = -1;
     this.lastFaceAt = 0;
+    this.processing = false;
     this.left = null;
     this.right = null;
     if (resetCount) this.blinkCount = 0;
     this.emitUpdate(performance.now());
   }
 
-  tick(now) {
+  async tick(now) {
     if (!this.active) return;
-    if (now-this.lastInferenceAt >= 1000/BLINK_INFERENCE_HZ && this.video.readyState >= 2 && this.video.currentTime !== this.lastVideoTime) {
+    if (!this.processing && now-this.lastInferenceAt >= 1000/BLINK_INFERENCE_HZ && this.video.readyState >= 2 && this.video.currentTime !== this.lastVideoTime) {
       this.lastInferenceAt = now;
       this.lastVideoTime = this.video.currentTime;
+      this.processing = true;
       try {
-        this.processResult(this.landmarker.detectForVideo(this.video, now), now);
+        const frame = await createImageBitmap(this.video);
+        if (this.active) this.runtimeFrame.contentWindow.postMessage({type:'frame',frame,timestamp:now,sessionId:this.sessionId},location.origin,[frame]);
+        else { frame.close(); this.processing=false; }
       } catch (error) {
-        console.error('Blink inference failed:', error);
+        this.processing=false;
+        console.error('Blink frame capture failed:', error);
         this.processTrackingLoss(now);
       }
     }
@@ -107,8 +139,10 @@ class BlinkController {
       return;
     }
     const scores = Object.fromEntries(categories.map(({categoryName, score}) => [categoryName, score]));
-    const left = scores.eyeBlinkLeft;
-    const right = scores.eyeBlinkRight;
+    this.processScores(scores.eyeBlinkLeft,scores.eyeBlinkRight,now);
+  }
+
+  processScores(left, right, now) {
     if (!Number.isFinite(left) || !Number.isFinite(right)) {
       this.processTrackingLoss(now);
       return;

@@ -1,6 +1,6 @@
 # Third-party notices
 
-Gaze Flappy vendors its WebGazer runtime and loads the pinned MediaPipe Tasks Vision blink runtime from a CDN without a package manager.
+Gaze Flappy vendors its WebGazer runtime and loads the pinned MediaPipe Tasks Vision blink runtime from a CDN inside an isolated iframe context.
 
 ## WebGazer.js 3.5.3
 
@@ -24,4 +24,4 @@ The upstream notices and complete GPLv3 and Apache 2.0 license texts are include
 - Face Landmarker model: `face_landmarker/float16/1`
 - Copyright: Google LLC
 - License: Apache License 2.0
-- Loaded by `blink.js` from jsDelivr and Google's official model storage
+- Loaded by `blink-runtime.html` from jsDelivr and Google's official model storage

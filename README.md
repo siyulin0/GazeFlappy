@@ -53,7 +53,7 @@ Blink Mode skips gaze calibration. Complete the three-blink readiness test, then
 
 ### Privacy
 
-Camera images are processed locally in the browser. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer's Face Mesh runtime is bundled; Blink Mode loads the pinned MediaPipe Tasks Vision 1.0.1 runtime and official Face Landmarker model from their CDNs.
+Camera images are processed locally in the browser. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer's required Face Mesh runtime is bundled. Blink Mode loads the pinned MediaPipe Tasks Vision 1.0.1 runtime and official Face Landmarker model inside an isolated hidden iframe, preventing its WASM globals from colliding with WebGazer's legacy MediaPipe runtime.
 
 ### Publish on GitHub Pages
 
@@ -97,6 +97,7 @@ If camera setup appears stuck, hard-refresh Chrome with **Ctrl+Shift+R**. The vi
 - `game.js` — state machine, gaze filtering, simulation, collision, and rendering
 - `gaze.js` — WebGazer lifecycle, calibration, and tracking status
 - `blink.js` — MediaPipe Face Landmarker lifecycle and blink state machine
+- `blink-runtime.html` — isolated Tasks Vision inference using frames from WebGazer's video
 - `blink.test.js` — deterministic blink state-machine tests
 - `webgazer.js` — vendored WebGazer 3.5.3 browser bundle
 - `mediapipe/face_mesh/` — matching MediaPipe model and WASM runtime

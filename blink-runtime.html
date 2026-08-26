@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Blink runtime</title></head><body>
+<script type="module">
+import {FaceLandmarker, FilesetResolver} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs';
+
+let landmarker = null;
+
+async function initialize() {
+  if (landmarker) return;
+  const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm');
+  const options = {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+      delegate: 'GPU'
+    },
+    runningMode: 'VIDEO',
+    numFaces: 1,
+    outputFaceBlendshapes: true,
+    minFaceDetectionConfidence: 0.5,
+    minFacePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  };
+  try {
+    landmarker = await FaceLandmarker.createFromOptions(vision, options);
+  } catch (error) {
+    options.baseOptions.delegate = 'CPU';
+    landmarker = await FaceLandmarker.createFromOptions(vision, options);
+  }
+}
+
+addEventListener('message', async ({data,source,origin}) => {
+  if (source !== parent || origin !== location.origin) return;
+  if (data.type === 'init') {
+    try {
+      await initialize();
+      parent.postMessage({source:'blink-runtime',type:'ready'}, location.origin);
+    } catch (error) {
+      parent.postMessage({source:'blink-runtime',type:'error',message:error?.message||String(error)}, location.origin);
+    }
+    return;
+  }
+  if (data.type !== 'frame') return;
+  const {frame,timestamp,sessionId} = data;
+  try {
+    const result = landmarker.detectForVideo(frame,timestamp);
+    const categories = result?.faceBlendshapes?.[0]?.categories;
+    const scores = categories ? Object.fromEntries(categories.map(({categoryName,score})=>[categoryName,score])) : {};
+    parent.postMessage({source:'blink-runtime',type:'scores',left:scores.eyeBlinkLeft??null,right:scores.eyeBlinkRight??null,timestamp,sessionId},location.origin);
+  } catch (error) {
+    parent.postMessage({source:'blink-runtime',type:'frame-error',message:error?.message||String(error),timestamp,sessionId},location.origin);
+  } finally {
+    frame.close();
+  }
+});
+</script>
+</body></html>
