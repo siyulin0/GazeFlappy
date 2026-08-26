@@ -57,4 +57,30 @@ detector.processResult(result(.8,.8), 2300);
 detector.processResult(result(.8,.8), 2355);
 expect(flaps, 4, 'post-restart blink');
 
+// Diagnostics count threshold crossings before acceptance filters.
+const diagnostics = new BlinkController({onBlink:()=>{}});
+diagnostics.processResult(result(.05,.05), 0);
+diagnostics.processResult(result(.8,.8), 100);
+diagnostics.processResult(result(.8,.8), 155);
+diagnostics.processResult(result(.05,.05), 170);
+diagnostics.processResult(result(.8,.8), 200);
+diagnostics.processResult(result(.8,.8), 255);
+expect(diagnostics.rawCandidateCount, 2, 'raw candidate diagnostics');
+expect(diagnostics.acceptedBlinkCount, 1, 'accepted blink diagnostics');
+expect(diagnostics.events.some(({label})=>label === 'rejected: cooldown active'), true, 'cooldown rejection log');
+expect(diagnostics.rejectionCounts['cooldown active'], 1, 'cooldown rejection count');
+diagnostics.recordFlap(260);
+expect(diagnostics.flapCount, 1, 'flap diagnostics');
+diagnostics.resetDiagnostics(300);
+expect(diagnostics.rawCandidateCount, 0, 'reset raw candidates');
+expect(diagnostics.acceptedBlinkCount, 0, 'reset accepted blinks');
+expect(diagnostics.flapCount, 0, 'reset flaps');
+expect(Object.keys(diagnostics.rejectionCounts).length, 0, 'reset rejection counts');
+expect(diagnostics.events.at(-1).label, 'DIAGNOSTICS RESET', 'reset log');
+
+diagnostics.recordInference(1000);
+diagnostics.recordInference(1050);
+diagnostics.recordInference(1100);
+expect(Math.round(diagnostics.diagnosticInferenceIntervalCount*1000/diagnostics.diagnosticInferenceIntervalTotal), 20, 'average inference FPS');
+
 console.log('Blink state-machine tests passed.');

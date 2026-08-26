@@ -45,7 +45,9 @@ addEventListener('message', async ({data,source,origin}) => {
     const result = landmarker.detectForVideo(frame,timestamp);
     const categories = result?.faceBlendshapes?.[0]?.categories;
     const scores = categories ? Object.fromEntries(categories.map(({categoryName,score})=>[categoryName,score])) : {};
-    parent.postMessage({source:'blink-runtime',type:'scores',left:scores.eyeBlinkLeft??null,right:scores.eyeBlinkRight??null,timestamp,sessionId},location.origin);
+    const left=scores.eyeBlinkLeft??null,right=scores.eyeBlinkRight??null;
+    const status=!categories?.length?'face-unavailable':Number.isFinite(left)&&Number.isFinite(right)?'valid':'invalid-result';
+    parent.postMessage({source:'blink-runtime',type:'scores',left,right,status,timestamp,sessionId},location.origin);
   } catch (error) {
     parent.postMessage({source:'blink-runtime',type:'frame-error',message:error?.message||String(error),timestamp,sessionId},location.origin);
   } finally {

@@ -1,208 +1,180 @@
-# Gaze Flappy | 视线飞鸟
+# SightFlight
 
-[Play online / 在线体验](https://siyulin0.github.io/GazeFlappy/)
+SightFlight is a browser-based experimental game in which players guide a flying bird using webcam-based eye interaction. Choose precise vertical gaze control or classic blink-to-flap gameplay, avoid moving obstacles, and score by flying safely through each gap.
 
-## English
+The game uses original, simple visual assets and does not use copyrighted Flappy Bird artwork.
 
-### About
+## Live site
 
-Gaze Flappy is an experimental browser game with two webcam-based controls: WebGazer translates vertical gaze movement into smooth bird control, while MediaPipe Face Landmarker recognizes normal binocular blinks as Flappy-style flap inputs.
+[Play SightFlight on GitHub Pages](https://siyulin0.github.io/GazeFlappy/)
 
-Friends can play from the hosted link without installing anything or running a local server. Gaze Flappy is an interaction prototype, not a medical device, and makes no claim to treat eye strain or improve vision.
+The repository is a static site with no build step. GitHub Pages serves it over HTTPS, which allows browsers to request webcam access.
 
-### Requirements
+## How it works
 
-- Laptop or desktop with a front-facing webcam
-- Current Chrome or Edge recommended; Firefox is also supported by WebGazer
-- Camera permission
-- HTTPS when hosted, or `http://localhost` / `http://127.0.0.1` during local development
-- Phones are not a priority for this prototype
+SightFlight offers two equally weighted choices on the opening screen: **Gaze Mode** and **Blink Mode**. The mode cards use a light default state, a raised dark hover state, and a pressed selected state.
 
-### Play online
+During a round, guide the bird through moving obstacles, avoid collisions, and earn points by passing obstacles. After Game Over, you can play again with the current control mode or return to the main menu and choose another mode. Setup, pause, and tracking-loss screens also provide a route back to the menu.
 
-Open [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/), choose **Gaze Mode** or **Blink Mode**, and allow camera access.
+### Gaze Mode
 
-### Run locally
+Gaze Mode uses WebGazer.js to estimate where the player is looking. Only the gaze **Y coordinate** controls gameplay; gaze X is retained for cursor visualization and debugging. The bird's horizontal position remains fixed.
 
-Do not open `index.html` directly with a `file://` URL. From the project folder, run:
+The control pipeline is:
+
+`high-frequency gaze sensing → short-window aggregation → 10 Hz gaze-control decisions → continuous smooth bird movement`
+
+WebGazer's Kalman filter is enabled. SightFlight then aggregates recent gaze-Y samples, selects their median, applies exponential smoothing, uses a dead zone to reject small target changes, and continuously moves the bird toward the resulting target.
+
+### Blink Mode
+
+Blink Mode uses MediaPipe Tasks Vision Face Landmarker blendshapes. The bird falls under gravity, and each accepted binocular blink applies one upward flap impulse.
+
+The detector follows an `OPEN → CLOSED → OPEN` cycle. Both eyes must satisfy the blink conditions, and reopening re-arms the detector, so holding the eyes closed does not repeatedly flap.
+
+Current gameplay tuning values are:
+
+- `BLINK_CLOSE_THRESHOLD = 0.45`
+- `BLINK_OPEN_THRESHOLD = 0.32`
+- `BLINK_MIN_CLOSED_MS = 50 ms`
+- `BLINK_COOLDOWN_MS = 180 ms`
+- `BLINK_INFERENCE_HZ = 20 Hz`
+
+These are experimental gameplay settings, not scientifically or medically validated parameters.
+
+## Controls and setup
+
+### Gaze Mode
+
+1. Choose **Gaze Mode**.
+2. Grant camera permission.
+3. Look at and click each of the nine calibration points three times.
+4. Complete the short gaze-validation step.
+5. Start the game and look higher or lower on the screen to guide the bird.
+
+An existing calibration is preserved when safely returning to the menu and selecting Gaze Mode again. A recalibration control is available during setup.
+
+### Blink Mode
+
+1. Choose **Blink Mode**.
+2. Grant camera permission if it has not already been granted.
+3. Complete the Blink Test by producing three successfully detected blinks.
+4. Start the game.
+5. Blink naturally to flap while gravity pulls the bird downward.
+
+### Other controls
+
+- **Pause** freezes the current round.
+- Hiding the browser tab automatically pauses gameplay.
+- Tracking loss pauses the round until tracking returns.
+- **Back to Menu** returns to mode selection from setup, pause/tracking-loss, and Game Over screens.
+- **Play Again** starts a fresh round with the current control mode.
+- Keyboard fallback uses **Arrow Up** and **Arrow Down**.
+
+## Technologies
+
+- HTML and CSS
+- Vanilla JavaScript
+- HTML5 Canvas
+- Browser webcam and media APIs
+- WebGazer.js 3.5.3
+- MediaPipe Tasks Vision 1.0.1 and Face Landmarker
+- MediaPipe face blendshapes (`eyeBlinkLeft` and `eyeBlinkRight`)
+- GitHub Actions and GitHub Pages
+
+WebGazer is vendored with its required legacy Face Mesh assets. Blink detection runs the newer MediaPipe Tasks Vision runtime in an isolated hidden iframe while reusing frames from the existing webcam video source. This prevents the two MediaPipe/Emscripten runtimes from sharing a conflicting JavaScript global context.
+
+## Running locally
+
+Camera-based browser APIs generally require a secure context. Modern browsers treat `localhost` and `127.0.0.1` as acceptable development origins, but opening `index.html` directly through a `file://` URL is not supported for camera testing.
+
+From the project directory, run:
 
 ```sh
 python -m http.server 8000
 ```
 
-Then open [http://localhost:8000](http://localhost:8000). HTTPS is not required on localhost.
+Then open [http://localhost:8000](http://localhost:8000).
 
-Alternatively, use the VS Code **Live Server** extension and choose **Open with Live Server** on `index.html`.
+The VS Code **Live Server** extension is another suitable option.
 
-### Controls and game flow
+## Deployment
 
-1. Choose **Gaze Mode** or **Blink Mode**. Camera permission is requested only after this choice.
-2. Look directly at each of the nine calibration targets and click each target three times.
-3. During validation, follow the mint target. The orange cursor shows the estimated gaze location.
-4. Start the game and look higher or lower on the screen to guide the bird.
+SightFlight can be deployed directly as a static GitHub Pages website. The included GitHub Actions workflow publishes the repository without Node, a framework, or a build system.
 
-Blink Mode skips gaze calibration. Complete the three-blink readiness test, then blink normally to flap while gravity pulls the bird downward.
+In the repository settings, configure **Pages → Build and deployment → Source** to use **GitHub Actions**. Keep HTTPS enabled so the deployed site can request camera permission.
 
-- **Pause** freezes the round. Hiding the browser tab also pauses it.
-- Tracking loss longer than 1.6 seconds pauses the game; it resumes when tracking returns.
-- **Show gaze cursor** displays the estimate during gameplay and is off by default.
-- **Debug** shows gaze coordinates, filtered Y, bird Y, FPS, and tracking status.
-- **Use keyboard** enables the fallback controls: hold **Arrow Up** or **Arrow Down**.
-- **Recalibrate** clears the gaze model and repeats calibration.
-- **Play Again** restarts without refreshing the page.
+## Privacy
 
-### Privacy
+Webcam access is required for Gaze Mode and Blink Mode. Users must grant camera permission through their browser.
 
-Camera images are processed locally in the browser. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer's required Face Mesh runtime is bundled. Blink Mode loads the pinned MediaPipe Tasks Vision 1.0.1 runtime and official Face Landmarker model inside an isolated hidden iframe, preventing its WASM globals from colliding with WebGazer's legacy MediaPipe runtime.
+Camera frames are processed locally in the browser for gaze and face-landmark estimation. SightFlight does not intentionally record, store, or upload webcam video. Some runtime libraries, fonts, and the Face Landmarker model are downloaded from their configured external hosts, but camera images are not intentionally sent to those services by the application.
 
-### Publish on GitHub Pages
+## Debugging and diagnostics
 
-This repository includes a no-build deployment workflow. Node, React, Vite, and package installation are not required.
+Optional development tools are available from the in-game Debug panel. They are not required for normal gameplay.
 
-1. Push the complete project, including `.github`, `mediapipe`, and all `.wasm` and `.data` files.
-2. Open the repository’s **Settings → Pages**.
-3. Set **Build and deployment → Source** to **GitHub Actions**.
-4. Open **Actions** and wait for **Deploy Gaze Flappy to GitHub Pages** to complete.
-5. Keep **Enforce HTTPS** enabled so webcam permission works on the hosted site.
+Diagnostics include:
 
-### Tuning
+- Raw gaze X and Y coordinates and filtered gaze-control values
+- `eyeBlinkLeft` and `eyeBlinkRight` blendshape scores
+- Blink state, thresholds, cooldown, and state timing
+- Webcam and MediaPipe inference FPS
+- Raw blink candidates, accepted blink events, and emitted flaps
+- A bounded blink-event and rejection log
+- Separate Normal and Fast diagnostic-run history with a copyable summary
 
-The main tuning constants are near the top of `game.js`:
+## Known limitations
 
-- `GAZE_SMOOTHING` — higher is more responsive; lower is steadier. Try `0.08–0.15`.
-- `GAZE_DEAD_ZONE` — higher ignores more small gaze changes. Try `20–40` pixels.
-- `BIRD_FOLLOW_SPEED` — controls how quickly the bird catches its filtered target.
-- `TRACKING_LOSS_MS` — delay before tracking loss pauses the game.
-- `CALIBRATION_CLICKS` — samples collected at each calibration point.
+- Webcam gaze tracking is substantially less precise than a dedicated laboratory eye tracker.
+- Results depend on lighting, webcam quality, face position, glasses and reflections, calibration quality, browser behavior, and device performance.
+- Gaze control can feel difficult because webcam predictions are noisy.
+- Rapid, brief, or subtle blinks may occasionally be missed or misclassified.
+- MediaPipe inference frequency varies by device and may be lower than the camera frame rate.
+- Significant browser-window resizing can reduce gaze accuracy; recalibration may help.
+- Initial model loading can take several seconds.
+- SightFlight is primarily designed for desktop and laptop browsers with webcams. Browser compatibility varies.
 
-Tune smoothing first, then the dead zone, and finally the follow speed.
+## Health disclaimer
 
-### Known limitations
+> SightFlight is an experimental interaction/game prototype, not a medical device. It is not intended to diagnose, treat, prevent, or cure eye strain, vision problems, or any other medical condition.
 
-- Accuracy varies with lighting, webcam quality, glasses, reflections, head position, calibration quality, browser, and screen size.
-- Webcam tracking is much less accurate than a laboratory eye tracker.
-- A substantial browser resize can reduce accuracy; recalibrate afterward.
-- Initial model loading may take several seconds on slower laptops.
-- The application is designed primarily for laptop and desktop displays.
-- This prototype is not a medical device.
+## Project status
 
-### Troubleshooting
+SightFlight is a working prototype. Current implemented features include:
 
-If camera setup appears stuck, hard-refresh Chrome with **Ctrl+Shift+R**. The video can appear before the face-landmark model finishes loading. If calibration still does not appear, confirm that `http://localhost:8000/mediapipe/face_mesh/face_mesh.binarypb` opens without a 404 error.
+- Gaze Mode and Blink Mode
+- Nine-point gaze calibration and validation
+- Gaze aggregation, smoothing, dead zone, and continuous bird following
+- Three-blink readiness test and blink-to-flap gameplay
+- Obstacle generation, collision detection, scoring, pause, and restart
+- Back-to-menu navigation throughout setup and post-game flows
+- Shared webcam use without duplicate permission prompts
+- Optional gaze and blink diagnostics
+- Static, build-free GitHub Pages deployment
 
-### Project structure
+## Project structure
 
 - `index.html` — screens, Canvas, and interface controls
-- `style.css` — responsive visual design
-- `game.js` — state machine, gaze filtering, simulation, collision, and rendering
+- `style.css` and `mode-selection.css` — responsive presentation and interaction styling
+- `game.js` — application state, controls, simulation, collision, scoring, and rendering
 - `gaze.js` — WebGazer lifecycle, calibration, and tracking status
-- `blink.js` — MediaPipe Face Landmarker lifecycle and blink state machine
-- `blink-runtime.html` — isolated Tasks Vision inference using frames from WebGazer's video
-- `blink.test.js` — deterministic blink state-machine tests
-- `webgazer.js` — vendored WebGazer 3.5.3 browser bundle
-- `mediapipe/face_mesh/` — matching MediaPipe model and WASM runtime
-- `.github/workflows/pages.yml` — automatic GitHub Pages deployment
-- `.nojekyll` — plain static-site configuration
+- `blink.js` — blink tracking, state machine, and diagnostics
+- `blink-runtime.html` — isolated MediaPipe Tasks Vision inference
+- `blink.test.js` — deterministic blink state-machine and diagnostics tests
+- `webgazer.js` — vendored WebGazer browser bundle
+- `mediapipe/face_mesh/` — WebGazer's matching legacy Face Mesh assets
+- `.github/workflows/pages.yml` — static GitHub Pages deployment
 - `THIRD_PARTY_NOTICES.md` and `LICENSES/` — third-party notices and licenses
 
-Future extensions can add timed look-away breaks and obstacle patterns designed around different eye interactions.
+## Future ideas
 
----
+Possible future experiments—not currently implemented—include:
 
-## 中文（简体）
-
-### 项目简介
-
-Gaze Flappy（视线飞鸟）是一款实验性浏览器游戏，用于探索将摄像头眼动追踪作为趣味交互方式的可行性。游戏通过 [WebGazer.js](https://webgazer.cs.brown.edu/) 在浏览器本地估计玩家的视线位置，并把垂直方向的视线移动转换为小鸟的平滑移动。玩家向上或向下看即可引导小鸟穿越障碍；本游戏不使用传统的点击拍翅操作。
-
-朋友可以直接通过在线链接游玩，无需安装软件或启动本地服务器。Gaze Flappy 仅为交互原型，并非医疗设备，也不宣称能够治疗眼疲劳或改善视力。
-
-### 使用要求
-
-- 配有前置摄像头的笔记本电脑或台式电脑
-- 推荐使用最新版 Chrome 或 Edge；WebGazer 也支持 Firefox
-- 授予浏览器摄像头权限
-- 在线部署时使用 HTTPS；本地开发可使用 `http://localhost` 或 `http://127.0.0.1`
-- 当前原型不以手机为主要支持平台
-
-### 在线体验
-
-打开 [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/)，点击 **Enable Eye Tracking（启用眼动追踪）**，然后允许浏览器使用摄像头。
-
-### 本地运行
-
-请勿通过 `file://` 直接打开 `index.html`。在项目文件夹中运行：
-
-```sh
-python -m http.server 8000
-```
-
-然后打开 [http://localhost:8000](http://localhost:8000)。在 localhost 上进行本地开发不需要 HTTPS。也可以使用 VS Code 的 **Live Server** 扩展打开 `index.html`。
-
-### 操作与游戏流程
-
-1. 点击 **Enable Eye Tracking**。只有点击后，浏览器才会请求摄像头权限。
-2. 直视九个校准点，并在每个点上点击三次。
-3. 在验证阶段，用视线跟随薄荷绿色目标；橙色光标表示系统估计的视线位置。
-4. 开始游戏后，向屏幕上方或下方看，控制小鸟垂直移动。
-
-- **Pause（暂停）** 会冻结当前回合；隐藏浏览器标签页也会自动暂停。
-- 如果超过 1.6 秒没有收到视线数据，游戏会暂停；恢复追踪后会自动继续。
-- **Show gaze cursor（显示视线光标）** 可在游戏中显示估计位置，默认关闭。
-- **Debug（调试）** 显示视线坐标、滤波后的 Y 值、小鸟位置、帧率和追踪状态。
-- **Use keyboard（使用键盘）** 启用备用控制：按住方向键 **↑** 或 **↓**。
-- **Recalibrate（重新校准）** 清除当前模型并重新进行九点校准。
-- **Play Again（再玩一次）** 无需刷新页面即可重新开始。
-
-### 隐私说明
-
-摄像头画面仅在浏览器本地用于视线估计。Gaze Flappy 不会有意录制、存储或上传摄像头图像，校准数据持久化功能也已关闭。WebGazer 和所需的 MediaPipe 模型文件均包含在本仓库中；只有可选的 Google 字体会从外部加载。
-
-### 发布到 GitHub Pages
-
-本仓库已包含无需构建的部署工作流，不需要 Node、React、Vite 或任何软件包安装步骤。
-
-1. 推送完整项目，包括 `.github`、`mediapipe` 以及所有 `.wasm` 和 `.data` 文件。
-2. 打开仓库的 **Settings → Pages**。
-3. 将 **Build and deployment → Source** 设置为 **GitHub Actions**。
-4. 打开 **Actions**，等待 **Deploy Gaze Flappy to GitHub Pages** 工作流完成。
-5. 保持 **Enforce HTTPS** 开启，以确保在线页面可以请求摄像头权限。
-
-### 参数调节
-
-主要参数位于 `game.js` 文件顶部：
-
-- `GAZE_SMOOTHING` — 数值越高响应越快，越低则更稳定；建议范围为 `0.08–0.15`。
-- `GAZE_DEAD_ZONE` — 数值越高，忽略的小幅视线变化越多；建议范围为 `20–40` 像素。
-- `BIRD_FOLLOW_SPEED` — 控制小鸟追随滤波目标位置的速度。
-- `TRACKING_LOSS_MS` — 眼动追踪丢失后自动暂停前的等待时间。
-- `CALIBRATION_CLICKS` — 每个校准点采集的样本次数。
-
-建议依次调节平滑系数、死区大小和跟随速度，并且每次只修改一个参数。
-
-### 已知限制
-
-- 准确度会受到光线、摄像头质量、眼镜反光、头部位置、校准质量、浏览器和屏幕尺寸的影响。
-- 普通摄像头眼动追踪的准确度远低于实验室级眼动仪。
-- 大幅调整浏览器窗口尺寸可能降低准确度；调整后应重新校准。
-- 在性能较低的笔记本电脑上，首次加载模型可能需要数秒。
-- 本应用主要针对笔记本电脑和台式电脑设计。
-- 本原型并非医疗设备。
-
-### 故障排除
-
-如果摄像头设置界面一直停留，请在 Chrome 中按 **Ctrl+Shift+R** 强制刷新。视频画面可能先于人脸特征模型完成加载。如果仍未进入校准界面，请确认 `http://localhost:8000/mediapipe/face_mesh/face_mesh.binarypb` 可以打开且没有出现 404 错误。
-
-### 项目结构
-
-- `index.html` — 页面、Canvas 画布和界面控件
-- `style.css` — 响应式视觉设计
-- `game.js` — 状态管理、视线滤波、游戏模拟、碰撞检测和绘制
-- `gaze.js` — WebGazer 生命周期、校准和追踪状态
-- `webgazer.js` — 项目内置的 WebGazer 3.5.3 浏览器版本
-- `mediapipe/face_mesh/` — 匹配的 MediaPipe 模型和 WASM 运行文件
-- `.github/workflows/pages.yml` — 自动部署到 GitHub Pages
-- `.nojekyll` — 纯静态网站配置
-- `THIRD_PARTY_NOTICES.md` 和 `LICENSES/` — 第三方声明与许可证
-
-未来版本可以加入定时远眺休息、主动眨眼机制，以及针对不同视线移动模式设计的障碍布局。
+- Special obstacles that respond to different eye behaviors
+- Look-away or distance-viewing breaks
+- Long-eye-closure interactions
+- More varied eye-controlled gameplay
+- Improved gaze-control tuning
+- Personalized blink calibration
+- Additional levels and obstacle patterns

@@ -1,0 +1,81 @@
+/* Opening-screen mode cards: flat, raised hover, pressed selection. */
+.mode-option {
+  min-width: 145px;
+  position: relative;
+  transform: translateY(0) scale(1);
+  box-shadow: 0 3px 0 #c7d9d4, 0 7px 16px rgba(30, 73, 72, .09);
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), box-shadow 180ms cubic-bezier(.2, .8, .2, 1), background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.mode-option span { margin-left: 14px; }
+
+.mode-option:not(.is-selected):hover {
+  z-index: 1;
+  color: #fff;
+  background: var(--ink);
+  border-color: var(--ink);
+  transform: translateY(-5px) scale(1.045);
+  box-shadow: 0 10px 0 #09232a, 0 18px 28px rgba(23, 52, 61, .24);
+}
+
+.mode-option.is-selected {
+  color: #fff;
+  background: var(--ink);
+  border-color: #09232a;
+  transform: translateY(1px) scale(1);
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, .28), 0 2px 0 #09232a;
+}
+
+.mode-option.is-pressing,
+.mode-option.is-pressing:hover,
+.mode-option:active {
+  color: #fff;
+  background: var(--ink);
+  border-color: #09232a;
+  transform: translateY(2px) scale(.98);
+  box-shadow: inset 0 4px 7px rgba(0, 0, 0, .32), 0 1px 0 #09232a;
+  transition-duration: 100ms;
+}
+
+.mode-option:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 4px;
+}
+
+.mode-option.is-selected:focus-visible { outline-color: var(--yellow); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-option,
+  .mode-option:hover,
+  .mode-option:active,
+  .mode-option.is-selected,
+  .mode-option.is-pressing {
+    transition-duration: 0ms;
+    transform: none;
+  }
+}
+
+.setup-back-button { margin-top: 10px; }
+
+/* Outside the opening menu, no action is dark-selected by default. */
+.screen:not(.welcome-screen) .button.primary {
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 #c7d9d4, 0 7px 16px rgba(30, 73, 72, .09);
+}
+
+.screen:not(.welcome-screen) .button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #c7d9d4, 0 10px 20px rgba(30, 73, 72, .13);
+}
+
+.screen:not(.welcome-screen) .button.primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #c7d9d4;
+}
+
+.screen:not(.welcome-screen) .button:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}

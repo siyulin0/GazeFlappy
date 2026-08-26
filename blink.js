@@ -1,7 +1,7 @@
 'use strict';
 
 // Blink detector tuning. MediaPipe blendshape scores are normalized to 0..1.
-const BLINK_CLOSE_THRESHOLD = 0.55;
+const BLINK_CLOSE_THRESHOLD = 0.45;
 const BLINK_OPEN_THRESHOLD = 0.32;
 const BLINK_MIN_CLOSED_MS = 50;
 const BLINK_COOLDOWN_MS = 180;
@@ -30,6 +30,23 @@ class BlinkController {
     this.blinkCount = 0;
     this.left = null;
     this.right = null;
+    this.rawClosed = false;
+    this.partialClosed = false;
+    this.trackingWasAvailable = false;
+    this.lastOpenAt = performance.now();
+    this.lastClosedAt = 0;
+    this.rawCandidateCount = 0;
+    this.acceptedBlinkCount = 0;
+    this.flapCount = 0;
+    this.mediaPipeFrames = 0;
+    this.inferenceTimes = [];
+    this.diagnosticInferenceIntervalTotal = 0;
+    this.diagnosticInferenceIntervalCount = 0;
+    this.lastDiagnosticInferenceAt = 0;
+    this.videoFrameTimes = [];
+    this.lastObservedVideoTime = -1;
+    this.events = [];
+    this.rejectionCounts = {};
   }
 
   async initialize() {
@@ -52,13 +69,17 @@ class BlinkController {
           if (data.sessionId !== this.sessionId) return;
           this.processing=false;
           if (!this.active) return;
-          this.processScores(data.left,data.right,data.timestamp);
+          this.recordInference(performance.now());
+          this.processScores(data.left,data.right,data.timestamp,data.status);
           return;
         }
         if (data.type === 'frame-error') {
           if (data.sessionId !== this.sessionId) return;
           this.processing=false;
+          this.recordInference(performance.now());
+          const wasTracking = this.trackingWasAvailable;
           if (this.active) this.processTrackingLoss(data.timestamp);
+          if (wasTracking) this.logEvent('rejected: invalid MediaPipe result',data.timestamp);
           console.error('Blink inference failed:', data.message);
         }
       };
@@ -106,6 +127,10 @@ class BlinkController {
     this.lastVideoTime = -1;
     this.lastFaceAt = 0;
     this.processing = false;
+    this.rawClosed = false;
+    this.partialClosed = false;
+    this.trackingWasAvailable = false;
+    this.lastObservedVideoTime = -1;
     this.left = null;
     this.right = null;
     if (resetCount) this.blinkCount = 0;
@@ -114,6 +139,11 @@ class BlinkController {
 
   async tick(now) {
     if (!this.active) return;
+    if (this.video.readyState >= 2 && this.video.currentTime !== this.lastObservedVideoTime) {
+      this.lastObservedVideoTime = this.video.currentTime;
+      this.videoFrameTimes.push(now);
+      this.trimTimes(this.videoFrameTimes,now);
+    }
     if (!this.processing && now-this.lastInferenceAt >= 1000/BLINK_INFERENCE_HZ && this.video.readyState >= 2 && this.video.currentTime !== this.lastVideoTime) {
       this.lastInferenceAt = now;
       this.lastVideoTime = this.video.currentTime;
@@ -135,15 +165,17 @@ class BlinkController {
   processResult(result, now) {
     const categories = result?.faceBlendshapes?.[0]?.categories;
     if (!categories?.length) {
-      this.processTrackingLoss(now);
+      this.processScores(null,null,now,'face-unavailable');
       return;
     }
     const scores = Object.fromEntries(categories.map(({categoryName, score}) => [categoryName, score]));
     this.processScores(scores.eyeBlinkLeft,scores.eyeBlinkRight,now);
   }
 
-  processScores(left, right, now) {
+  processScores(left, right, now, status='valid') {
     if (!Number.isFinite(left) || !Number.isFinite(right)) {
+      const label=status==='face-unavailable'?'face tracking unavailable':'invalid MediaPipe result';
+      if (this.trackingWasAvailable) this.logEvent(`rejected: ${label}`,now);
       this.processTrackingLoss(now);
       return;
     }
@@ -151,11 +183,32 @@ class BlinkController {
     this.left = left;
     this.right = right;
     this.lastFaceAt = now;
+    this.trackingWasAvailable = true;
     const bothClosed = left >= BLINK_CLOSE_THRESHOLD && right >= BLINK_CLOSE_THRESHOLD;
     const bothOpen = left <= BLINK_OPEN_THRESHOLD && right <= BLINK_OPEN_THRESHOLD;
+    const eitherClosed = left >= BLINK_CLOSE_THRESHOLD || right >= BLINK_CLOSE_THRESHOLD;
+
+    if (bothClosed && !this.rawClosed) {
+      this.rawClosed = true;
+      this.rawCandidateCount++;
+      this.logEvent('RAW CLOSED candidate',now);
+      if (!this.armed) this.logEvent('rejected: detector not re-armed',now);
+    } else if (!bothClosed) {
+      this.rawClosed = false;
+    }
+    if (eitherClosed && !bothClosed && !this.partialClosed) {
+      this.partialClosed = true;
+      this.logEvent('rejected: eyes not both closed enough',now);
+    } else if (!eitherClosed || bothClosed) {
+      this.partialClosed = false;
+    }
 
     if (!this.armed) {
-      if (bothOpen) this.armed = true;
+      if (bothOpen) {
+        this.armed = true;
+        this.lastOpenAt = now;
+        this.logEvent('OPEN — detector armed',now);
+      }
       return;
     }
 
@@ -168,18 +221,29 @@ class BlinkController {
       if (!bothClosed) {
         this.state = 'OPEN';
         this.closedSince = 0;
+        this.lastOpenAt = now;
+        this.logEvent('rejected: closure duration too short',now);
+        this.logEvent('OPEN',now);
       } else if (now-this.closedSince >= BLINK_MIN_CLOSED_MS) {
         this.state = 'CLOSED';
+        this.lastClosedAt = now;
+        this.logEvent('CLOSED confirmed',now);
         if (now-this.lastBlinkAt >= BLINK_COOLDOWN_MS) {
           this.lastBlinkAt = now;
           this.blinkCount++;
+          this.acceptedBlinkCount++;
+          this.logEvent('BLINK ACCEPTED',now);
           this.onBlink?.(this.blinkCount);
+        } else {
+          this.logEvent('rejected: cooldown active',now);
         }
       }
     } else if (this.state === 'CLOSED' && bothOpen) {
       this.state = 'OPEN';
       this.closedSince = 0;
       this.armed = true;
+      this.lastOpenAt = now;
+      this.logEvent('OPEN — detector re-armed',now);
     }
   }
 
@@ -188,7 +252,63 @@ class BlinkController {
     this.right = null;
     this.state = 'OPEN';
     this.armed = false;
+    this.rawClosed = false;
+    this.partialClosed = false;
+    this.trackingWasAvailable = false;
     this.closedSince = 0;
+    this.emitUpdate(now);
+  }
+
+  recordInference(now) {
+    if(this.lastDiagnosticInferenceAt){
+      this.diagnosticInferenceIntervalTotal += now-this.lastDiagnosticInferenceAt;
+      this.diagnosticInferenceIntervalCount++;
+    }
+    this.lastDiagnosticInferenceAt=now;
+    this.mediaPipeFrames++;
+    this.inferenceTimes.push(now);
+    this.trimTimes(this.inferenceTimes,now);
+  }
+
+  trimTimes(times,now) {
+    while(times.length && times[0] < now-2000) times.shift();
+  }
+
+  rate(times) {
+    return times.length>1 ? (times.length-1)*1000/(times[times.length-1]-times[0]) : 0;
+  }
+
+  logEvent(label,now=performance.now()) {
+    this.events.push({time:now,label});
+    if(this.events.length>25)this.events.shift();
+    if(label.startsWith('rejected: ')){
+      const reason=label.slice(10);
+      this.rejectionCounts[reason]=(this.rejectionCounts[reason]||0)+1;
+    }
+  }
+
+  recordFlap(now=performance.now()) {
+    this.flapCount++;
+    this.logEvent('FLAP EMITTED',now);
+  }
+
+  recordGameRejection(now=performance.now()) {
+    this.logEvent('rejected: game not in Blink Mode',now);
+  }
+
+  resetDiagnostics(now=performance.now()) {
+    this.rawCandidateCount=0;
+    this.acceptedBlinkCount=0;
+    this.flapCount=0;
+    this.mediaPipeFrames=0;
+    this.inferenceTimes=[];
+    this.diagnosticInferenceIntervalTotal=0;
+    this.diagnosticInferenceIntervalCount=0;
+    this.lastDiagnosticInferenceAt=0;
+    this.videoFrameTimes=[];
+    this.events=[];
+    this.rejectionCounts={};
+    this.logEvent('DIAGNOSTICS RESET',now);
     this.emitUpdate(now);
   }
 
@@ -197,7 +317,9 @@ class BlinkController {
   }
 
   emitUpdate(now) {
-    this.onUpdate?.({left:this.left,right:this.right,state:this.state,displayState:this.state==='CLOSED'?'CLOSED':'OPEN',closedMs:this.closedSince?Math.max(0,now-this.closedSince):0,blinkCount:this.blinkCount,tracking:this.isFresh()});
+    this.trimTimes(this.inferenceTimes,now);
+    this.trimTimes(this.videoFrameTimes,now);
+    this.onUpdate?.({left:this.left,right:this.right,state:this.state,displayState:this.state==='CLOSED'?'CLOSED':'OPEN',closedMs:this.closedSince?Math.max(0,now-this.closedSince):0,blinkCount:this.blinkCount,tracking:this.isFresh(),diagnostics:{cooldownActive:now-this.lastBlinkAt<BLINK_COOLDOWN_MS,sinceLastBlink:Number.isFinite(this.lastBlinkAt)?Math.max(0,now-this.lastBlinkAt):null,sinceOpen:this.lastOpenAt?Math.max(0,now-this.lastOpenAt):null,sinceClosed:this.lastClosedAt?Math.max(0,now-this.lastClosedAt):null,videoFps:this.rate(this.videoFrameTimes),mediaPipeFps:this.rate(this.inferenceTimes),averageMediaPipeFps:this.diagnosticInferenceIntervalTotal?this.diagnosticInferenceIntervalCount*1000/this.diagnosticInferenceIntervalTotal:0,mediaPipeFrames:this.mediaPipeFrames,rawCandidates:this.rawCandidateCount,acceptedBlinks:this.acceptedBlinkCount,flaps:this.flapCount,rejections:{...this.rejectionCounts},events:this.events.slice()}});
   }
 }
 
