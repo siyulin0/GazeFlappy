@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gaze Flappy — an experimental webcam gaze-controlled visual-break game.">
+  <title>Gaze Flappy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Gaze Flappy home">
+        <span class="brand-mark" aria-hidden="true">◉</span>
+        <span>Gaze Flappy</span>
+      </a>
+      <div class="top-actions">
+        <span id="controlBadge" class="badge">Control: Eye Tracking</span>
+        <button id="pauseButton" class="icon-button hidden" type="button">Pause</button>
+      </div>
+    </header>
+
+    <section id="stage" class="stage" aria-live="polite">
+      <canvas id="gameCanvas" width="1280" height="720" aria-label="Gaze Flappy game canvas"></canvas>
+      <div class="sky-noise" aria-hidden="true"></div>
+
+      <section id="welcomeScreen" class="screen welcome-screen">
+        <div class="hero-copy">
+          <p class="eyebrow">A webcam gaze experiment</p>
+          <h1>Gaze <span>Flappy</span></h1>
+          <p class="lede">Control the bird with your eyes.</p>
+          <ol class="steps">
+            <li><b>1</b><span>Enable your webcam</span></li>
+            <li><b>2</b><span>Calibrate eye tracking</span></li>
+            <li><b>3</b><span>Look up and down to fly</span></li>
+            <li><b>4</b><span>Glide through the obstacles</span></li>
+          </ol>
+          <p class="privacy"><span aria-hidden="true">◆</span> Camera images are processed locally for gaze estimation and are not recorded or uploaded.</p>
+          <div class="button-row">
+            <button id="enableTrackingButton" class="button primary" type="button">Enable Eye Tracking <span>→</span></button>
+            <button id="howButton" class="button secondary" type="button">How It Works</button>
+          </div>
+          <button id="keyboardDemoButton" class="text-button" type="button">Or try with keyboard controls</button>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="sun"></div><div class="cloud cloud-a"></div><div class="cloud cloud-b"></div>
+          <div class="hero-bird"><i></i><em></em><b></b></div>
+          <div class="gaze-path"><span></span><span></span><span></span></div>
+          <div class="pipe-art top"></div><div class="pipe-art bottom"></div>
+        </div>
+      </section>
+
+      <section id="cameraScreen" class="screen centered hidden">
+        <div class="card compact-card">
+          <div class="loader" aria-hidden="true"></div>
+          <p class="eyebrow">Camera setup</p>
+          <h2>Getting your eyes in view…</h2>
+          <p id="cameraStatus">Allow camera access in your browser when prompted.</p>
+          <div id="cameraErrorActions" class="button-row hidden">
+            <button id="retryCameraButton" class="button primary" type="button">Try Again</button>
+            <button id="cameraKeyboardButton" class="button secondary" type="button">Use Keyboard</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="calibrationScreen" class="screen hidden">
+        <div class="calibration-header">
+          <div><p class="eyebrow">Eye tracking setup</p><h2 id="calibrationTitle">Look at each dot and click</h2></div>
+          <div class="progress-wrap"><span id="calibrationProgress">Calibration: 0 / 9</span><div class="progress"><i id="calibrationBar"></i></div></div>
+        </div>
+        <p id="calibrationHint" class="calibration-hint">Keep your head comfortably still. Click each target 3 times while looking directly at it.</p>
+        <div id="calibrationPoints" class="calibration-points"></div>
+        <div id="validationPanel" class="validation-panel hidden">
+          <div id="validationTarget" class="validation-target"><span></span></div>
+          <div class="validation-copy"><b>Follow the mint target with your eyes</b><span>Orange shows the current estimate.</span></div>
+          <div class="button-row">
+            <button id="startGameButton" class="button primary" type="button">Start Game <span>→</span></button>
+            <button id="recalibrateButton" class="button secondary" type="button">Recalibrate</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="hud" class="hud hidden">
+        <div class="score-card"><small>SCORE</small><strong id="scoreValue">0</strong></div>
+        <div class="hud-options">
+          <label><input id="gazeToggle" type="checkbox"><span></span> Show gaze cursor</label>
+          <label><input id="debugToggle" type="checkbox"><span></span> Debug</label>
+          <button id="modeButton" class="mini-button" type="button">Use keyboard</button>
+        </div>
+      </div>
+
+      <div id="gazeCursor" class="gaze-cursor hidden" aria-hidden="true"></div>
+      <div id="trackingLost" class="tracking-lost hidden"><span></span> Eye tracking lost — look toward the screen.</div>
+      <aside id="debugPanel" class="debug-panel hidden"><b>Tracking telemetry</b><dl><dt>Raw X</dt><dd id="debugRawX">—</dd><dt>Raw Y</dt><dd id="debugRawY">—</dd><dt>Smoothed Y</dt><dd id="debugSmoothY">—</dd><dt>Bird Y</dt><dd id="debugBirdY">—</dd><dt>FPS</dt><dd id="debugFps">—</dd><dt>Status</dt><dd id="debugStatus">idle</dd></dl></aside>
+
+      <section id="readyScreen" class="screen centered hidden"><div class="card compact-card"><p class="eyebrow">Calibration complete</p><h2>Ready to glide?</h2><p>Look toward the upper or lower part of the screen. The bird will smoothly follow your gaze.</p><button id="readyStartButton" class="button primary" type="button">Start Game <span>→</span></button></div></section>
+      <section id="pauseScreen" class="screen centered overlay hidden"><div class="card compact-card"><p class="eyebrow">Round paused</p><h2 id="pauseTitle">Take your time</h2><p id="pauseMessage">Your score and obstacles are frozen.</p><button id="resumeButton" class="button primary" type="button">Resume</button></div></section>
+      <section id="gameOverScreen" class="screen centered overlay hidden"><div class="card compact-card result-card"><div class="result-icon">★</div><p class="eyebrow">Round complete</p><h2>Nice glide!</h2><div class="final-score"><span>Score</span><strong id="finalScore">0</strong><small id="bestScore">Best: 0</small></div><div class="button-row"><button id="restartButton" class="button primary" type="button">Play Again</button><button id="gameRecalibrateButton" class="button secondary" type="button">Recalibrate</button></div></div></section>
+
+      <dialog id="howDialog"><button id="closeHowButton" class="dialog-close" aria-label="Close">×</button><p class="eyebrow">How it works</p><h2>Your gaze becomes a flight path</h2><div class="flow"><span>Webcam</span><b>→</b><span>Gaze estimate</span><b>→</b><span>Smoothing</span><b>→</b><span>Bird</span></div><p>WebGazer estimates where you are looking using video processed in your browser. We smooth the vertical estimate and let the bird gradually follow it—there is no click-to-flap physics.</p><p class="fine-print">Gaze Flappy is an experimental visual-break game that encourages users to vary their gaze direction after prolonged screen work. It is not a medical device.</p></dialog>
+    </section>
+
+    <footer><span>Experimental interaction prototype</span><span>Camera processing stays on this device</span></footer>
+  </main>
+  <!-- Vendored official WebGazer 3.5.3 release for private, reliable loading. -->
+  <script src="webgazer.js"></script>
+  <script src="gaze.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
