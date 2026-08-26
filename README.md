@@ -8,7 +8,7 @@ The game uses original, simple visual assets and does not use copyrighted Flappy
 
 ## Live site
 
-[Play SightFlight on GitHub Pages](https://siyulin0.github.io/GazeFlappy/)
+[Play SightFlight on GitHub Pages](https://siyulin0.github.io/SightFlight/)
 
 The repository is a static site with no build step. GitHub Pages serves it over HTTPS, which allows browsers to request webcam access.
 
@@ -193,7 +193,7 @@ Possible future experiments—not currently implemented—include:
 
 ### 在线体验
 
-[通过 GitHub Pages 体验视控飞鸟](https://siyulin0.github.io/GazeFlappy/)
+[通过 GitHub Pages 体验视控飞鸟](https://siyulin0.github.io/SightFlight/)
 
 本项目是无需构建步骤的静态网站。GitHub Pages 通过 HTTPS 提供页面，因此浏览器可以安全地请求摄像头权限。
 
