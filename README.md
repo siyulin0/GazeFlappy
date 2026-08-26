@@ -1,135 +1,203 @@
-# Gaze Flappy
+# Gaze Flappy | 视线飞鸟
 
-Gaze Flappy is a browser-based webcam gaze-controlled game prototype built with vanilla HTML, CSS, JavaScript, Canvas, and [WebGazer.js](https://webgazer.cs.brown.edu/). Look vertically around the screen to guide an original geometric bird through generous moving obstacles.
+[Play online / 在线体验](https://siyulin0.github.io/GazeWing/)
 
-Once deployed, friends can play from a normal link—no installation or local server required. They should use a laptop or desktop with a webcam and allow camera access when prompted.
+## English
 
-It is an experimental visual-break game that encourages users to vary their gaze direction after prolonged screen work. It is not a medical device and makes no claim to treat eye strain or improve vision.
+### About
 
-## Requirements
+Gaze Flappy is an experimental browser game that explores webcam-based eye tracking as a playful interaction method. Using [WebGazer.js](https://webgazer.cs.brown.edu/), it estimates the player’s gaze locally in the browser and translates vertical gaze movement into smooth bird control. Look up or down to guide the bird through obstacles—no click-to-flap controls are used.
 
-- A laptop or desktop with a front-facing webcam
-- A current Chromium-based browser or Firefox (Chrome/Edge are recommended)
+Friends can play from the hosted link without installing anything or running a local server. Gaze Flappy is an interaction prototype, not a medical device, and makes no claim to treat eye strain or improve vision.
+
+### Requirements
+
+- Laptop or desktop with a front-facing webcam
+- Current Chrome or Edge recommended; Firefox is also supported by WebGazer
 - Camera permission
-- Internet access is optional; only the Nunito web font uses a remote host and has a system-font fallback
-- HTTPS in production, or local development at `http://localhost` or `http://127.0.0.1`. Browsers treat these loopback origins as secure contexts for webcam access.
+- HTTPS when hosted, or `http://localhost` / `http://127.0.0.1` during local development
+- Phones are not a priority for this prototype
 
-## How to run
+### Play online
 
-Do not open `index.html` directly as a `file://` URL. HTTPS is **not required for local development**. Start a local HTTP server in this folder instead.
+Open [https://siyulin0.github.io/GazeWing/](https://siyulin0.github.io/GazeWing/), click **Enable Eye Tracking**, and allow camera access.
 
-### Option 1: Python
+### Run locally
+
+Do not open `index.html` directly with a `file://` URL. From the project folder, run:
 
 ```sh
 python -m http.server 8000
 ```
 
-Then open exactly:
+Then open [http://localhost:8000](http://localhost:8000). HTTPS is not required on localhost.
 
-[http://localhost:8000](http://localhost:8000)
+Alternatively, use the VS Code **Live Server** extension and choose **Open with Live Server** on `index.html`.
 
-Allow camera access when the browser prompts you. You may also use `http://127.0.0.1:8000`; both loopback addresses are accepted by the application.
-
-On systems where Python 3 uses a separate command:
-
-```sh
-python3 -m http.server 8000
-```
-
-### Option 2: VS Code Live Server
-
-1. Open this project folder in VS Code.
-2. Install the **Live Server** extension by Ritwick Dey.
-3. Right-click `index.html` and choose **Open with Live Server**.
-4. Allow camera access when prompted.
-
-The project is entirely static and can also be deployed to an HTTPS host such as GitHub Pages.
-
-## Publish on GitHub Pages
-
-This repository includes a no-build GitHub Pages workflow. It publishes the static files exactly as they appear in the repository; Node, React, Vite, and package installation are not involved.
-
-1. Create a new GitHub repository, for example `gaze-flappy`. A public repository works with GitHub Free.
-2. Push this entire project, including the hidden `.github` directory and the `mediapipe` directory.
-3. On GitHub, open **Settings → Pages**.
-4. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-5. Open the repository's **Actions** tab. The **Deploy Gaze Flappy to GitHub Pages** workflow runs automatically after a push; you can also run it manually.
-6. When deployment finishes, share:
-
-   ```text
-   https://YOUR-USERNAME.github.io/gaze-flappy/
-   ```
-
-GitHub Pages serves the game over HTTPS, so webcam permission works without a local server. In **Settings → Pages**, keep **Enforce HTTPS** enabled. The first deployment can take a few minutes.
-
-### Upload with Git commands
-
-From this project folder, replace the example URL with the repository URL GitHub gives you:
-
-```sh
-git add .
-git commit -m "Publish Gaze Flappy"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/gaze-flappy.git
-git push -u origin main
-```
-
-If you upload through GitHub's website instead, make sure the large `.wasm` and `.data` files inside `mediapipe/face_mesh/` are included. None exceeds GitHub's individual file-size limit.
-
-## Controls and flow
+### Controls and game flow
 
 1. Click **Enable Eye Tracking**. Camera permission is requested only after this click.
-2. Look directly at each of the nine calibration targets and click it three times.
-3. In validation, follow the mint target; the optional orange gaze cursor shows WebGazer's estimate.
+2. Look directly at each of the nine calibration targets and click each target three times.
+3. During validation, follow the mint target. The orange cursor shows the estimated gaze location.
 4. Start the game and look higher or lower on the screen to guide the bird.
 
-- **Pause** freezes the round. Hiding the tab also pauses it.
-- If gaze samples disappear for 1.6 seconds, the round pauses and resumes when tracking returns.
-- **Show gaze cursor** displays the estimated gaze point during gameplay (off by default).
-- **Debug** displays raw gaze values, filtered Y, bird Y, FPS, and tracking state.
-- **Use keyboard** switches to the fallback: hold **Arrow Up** or **Arrow Down**.
-- **Recalibrate** clears the current model and repeats all nine targets.
-- **Play Again** resets the existing round without adding another animation loop.
+- **Pause** freezes the round. Hiding the browser tab also pauses it.
+- Tracking loss longer than 1.6 seconds pauses the game; it resumes when tracking returns.
+- **Show gaze cursor** displays the estimate during gameplay and is off by default.
+- **Debug** shows gaze coordinates, filtered Y, bird Y, FPS, and tracking status.
+- **Use keyboard** enables the fallback controls: hold **Arrow Up** or **Arrow Down**.
+- **Recalibrate** clears the gaze model and repeats calibration.
+- **Play Again** restarts without refreshing the page.
 
-## Privacy
+### Privacy
 
-Camera images are processed locally in the browser by WebGazer for gaze estimation. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration data persistence is disabled. The official WebGazer 3.5.3 browser bundle is vendored as `webgazer.js`; only the optional Google font is fetched remotely.
+Camera images are processed locally in the browser for gaze estimation. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer and the required MediaPipe model files are bundled with this repository; only the optional Google font is fetched remotely.
 
-## Tuning
+### Publish on GitHub Pages
 
-The first constants in `game.js` are the main controls:
+This repository includes a no-build deployment workflow. Node, React, Vite, and package installation are not required.
 
-- `GAZE_SMOOTHING` — higher is more responsive; lower is steadier. Start around `0.08–0.15`.
-- `GAZE_DEAD_ZONE` — higher suppresses more small gaze changes. Start around `20–40` pixels.
-- `BIRD_FOLLOW_SPEED` — higher makes the bird catch the filtered target faster.
-- `TRACKING_LOSS_MS` — delay before an eye-tracking pause.
+1. Push the complete project, including `.github`, `mediapipe`, and all `.wasm` and `.data` files.
+2. Open the repository’s **Settings → Pages**.
+3. Set **Build and deployment → Source** to **GitHub Actions**.
+4. Open **Actions** and wait for **Deploy Gaze Flappy to GitHub Pages** to complete.
+5. Keep **Enforce HTTPS** enabled so webcam permission works on the hosted site.
+
+### Tuning
+
+The main tuning constants are near the top of `game.js`:
+
+- `GAZE_SMOOTHING` — higher is more responsive; lower is steadier. Try `0.08–0.15`.
+- `GAZE_DEAD_ZONE` — higher ignores more small gaze changes. Try `20–40` pixels.
+- `BIRD_FOLLOW_SPEED` — controls how quickly the bird catches its filtered target.
+- `TRACKING_LOSS_MS` — delay before tracking loss pauses the game.
 - `CALIBRATION_CLICKS` — samples collected at each calibration point.
 
-Tune smoothing first, then dead zone, then follow speed. Change one value at a time.
+Tune smoothing first, then the dead zone, and finally the follow speed.
 
-## Known limitations
+### Known limitations
 
 - Accuracy varies with lighting, webcam quality, glasses, reflections, head position, calibration quality, browser, and screen size.
-- Webcam gaze tracking is much less accurate than a laboratory eye tracker.
-- Resizing the browser after calibration can reduce accuracy; recalibrate after a substantial resize.
-- The vendored WebGazer bundle is large, so its first parse can take a moment on slower laptops.
-- The app is optimized for laptop and desktop displays, not phones.
+- Webcam tracking is much less accurate than a laboratory eye tracker.
+- A substantial browser resize can reduce accuracy; recalibrate afterward.
+- Initial model loading may take several seconds on slower laptops.
+- The application is designed primarily for laptop and desktop displays.
 - This prototype is not a medical device.
 
-## Architecture and future extensions
+### Troubleshooting
 
-- `index.html` — UI, screens, canvas, controls, and WebGazer script loading
-- `style.css` — responsive visual design and interface states
-- `gaze.js` — WebGazer lifecycle, samples, calibration recording, and freshness checks
-- `webgazer.js` — vendored official WebGazer 3.5.3 distribution bundle, with its legacy HTTPS warning adjusted to recognize both localhost loopback forms
-- `mediapipe/face_mesh/` — matching MediaPipe 0.4.1633559619 model, loader, and WASM runtime files required by WebGazer
-- `.github/workflows/pages.yml` — no-build automatic GitHub Pages deployment
-- `.nojekyll` — tells GitHub Pages to serve the repository as a plain static site
-- `THIRD_PARTY_NOTICES.md` and `LICENSES/` — licenses for vendored browser dependencies
+If camera setup appears stuck, hard-refresh Chrome with **Ctrl+Shift+R**. The video can appear before the face-landmark model finishes loading. If calibration still does not appear, confirm that `http://localhost:8000/mediapipe/face_mesh/face_mesh.binarypb` opens without a 404 error.
 
-### If camera setup appears stuck
+### Project structure
 
-After updating the project, hard-refresh the page with **Ctrl+Shift+R** so Chrome does not reuse an older cached script. The camera preview can appear before the face-landmark model is ready; once the local MediaPipe assets load, the app automatically advances to calibration. If it still does not advance, confirm that `http://localhost:8000/mediapipe/face_mesh/face_mesh.binarypb` opens without a 404 error.
-- `game.js` — state machine, input filtering, game simulation, collision, rendering, and UI wiring
+- `index.html` — screens, Canvas, and interface controls
+- `style.css` — responsive visual design
+- `game.js` — state machine, gaze filtering, simulation, collision, and rendering
+- `gaze.js` — WebGazer lifecycle, calibration, and tracking status
+- `webgazer.js` — vendored WebGazer 3.5.3 browser bundle
+- `mediapipe/face_mesh/` — matching MediaPipe model and WASM runtime
+- `.github/workflows/pages.yml` — automatic GitHub Pages deployment
+- `.nojekyll` — plain static-site configuration
+- `THIRD_PARTY_NOTICES.md` and `LICENSES/` — third-party notices and licenses
 
-Game timing is isolated in `game.elapsed`, leaving a clear place for a future 60–90 second look-away break. Gaze input is behind `GazeController`, so a future MediaPipe blink detector can be added without changing collision or rendering logic. Pipe generation is also isolated in `spawnPipe()`, ready for intentional high/low or diagonal gaze-pattern levels.
+Future extensions can add timed look-away breaks, intentional blink mechanics, and obstacle patterns designed around different gaze movements.
+
+---
+
+## 中文（简体）
+
+### 项目简介
+
+Gaze Flappy（视线飞鸟）是一款实验性浏览器游戏，用于探索将摄像头眼动追踪作为趣味交互方式的可行性。游戏通过 [WebGazer.js](https://webgazer.cs.brown.edu/) 在浏览器本地估计玩家的视线位置，并把垂直方向的视线移动转换为小鸟的平滑移动。玩家向上或向下看即可引导小鸟穿越障碍；本游戏不使用传统的点击拍翅操作。
+
+朋友可以直接通过在线链接游玩，无需安装软件或启动本地服务器。Gaze Flappy 仅为交互原型，并非医疗设备，也不宣称能够治疗眼疲劳或改善视力。
+
+### 使用要求
+
+- 配有前置摄像头的笔记本电脑或台式电脑
+- 推荐使用最新版 Chrome 或 Edge；WebGazer 也支持 Firefox
+- 授予浏览器摄像头权限
+- 在线部署时使用 HTTPS；本地开发可使用 `http://localhost` 或 `http://127.0.0.1`
+- 当前原型不以手机为主要支持平台
+
+### 在线体验
+
+打开 [https://siyulin0.github.io/GazeWing/](https://siyulin0.github.io/GazeWing/)，点击 **Enable Eye Tracking（启用眼动追踪）**，然后允许浏览器使用摄像头。
+
+### 本地运行
+
+请勿通过 `file://` 直接打开 `index.html`。在项目文件夹中运行：
+
+```sh
+python -m http.server 8000
+```
+
+然后打开 [http://localhost:8000](http://localhost:8000)。在 localhost 上进行本地开发不需要 HTTPS。也可以使用 VS Code 的 **Live Server** 扩展打开 `index.html`。
+
+### 操作与游戏流程
+
+1. 点击 **Enable Eye Tracking**。只有点击后，浏览器才会请求摄像头权限。
+2. 直视九个校准点，并在每个点上点击三次。
+3. 在验证阶段，用视线跟随薄荷绿色目标；橙色光标表示系统估计的视线位置。
+4. 开始游戏后，向屏幕上方或下方看，控制小鸟垂直移动。
+
+- **Pause（暂停）** 会冻结当前回合；隐藏浏览器标签页也会自动暂停。
+- 如果超过 1.6 秒没有收到视线数据，游戏会暂停；恢复追踪后会自动继续。
+- **Show gaze cursor（显示视线光标）** 可在游戏中显示估计位置，默认关闭。
+- **Debug（调试）** 显示视线坐标、滤波后的 Y 值、小鸟位置、帧率和追踪状态。
+- **Use keyboard（使用键盘）** 启用备用控制：按住方向键 **↑** 或 **↓**。
+- **Recalibrate（重新校准）** 清除当前模型并重新进行九点校准。
+- **Play Again（再玩一次）** 无需刷新页面即可重新开始。
+
+### 隐私说明
+
+摄像头画面仅在浏览器本地用于视线估计。Gaze Flappy 不会有意录制、存储或上传摄像头图像，校准数据持久化功能也已关闭。WebGazer 和所需的 MediaPipe 模型文件均包含在本仓库中；只有可选的 Google 字体会从外部加载。
+
+### 发布到 GitHub Pages
+
+本仓库已包含无需构建的部署工作流，不需要 Node、React、Vite 或任何软件包安装步骤。
+
+1. 推送完整项目，包括 `.github`、`mediapipe` 以及所有 `.wasm` 和 `.data` 文件。
+2. 打开仓库的 **Settings → Pages**。
+3. 将 **Build and deployment → Source** 设置为 **GitHub Actions**。
+4. 打开 **Actions**，等待 **Deploy Gaze Flappy to GitHub Pages** 工作流完成。
+5. 保持 **Enforce HTTPS** 开启，以确保在线页面可以请求摄像头权限。
+
+### 参数调节
+
+主要参数位于 `game.js` 文件顶部：
+
+- `GAZE_SMOOTHING` — 数值越高响应越快，越低则更稳定；建议范围为 `0.08–0.15`。
+- `GAZE_DEAD_ZONE` — 数值越高，忽略的小幅视线变化越多；建议范围为 `20–40` 像素。
+- `BIRD_FOLLOW_SPEED` — 控制小鸟追随滤波目标位置的速度。
+- `TRACKING_LOSS_MS` — 眼动追踪丢失后自动暂停前的等待时间。
+- `CALIBRATION_CLICKS` — 每个校准点采集的样本次数。
+
+建议依次调节平滑系数、死区大小和跟随速度，并且每次只修改一个参数。
+
+### 已知限制
+
+- 准确度会受到光线、摄像头质量、眼镜反光、头部位置、校准质量、浏览器和屏幕尺寸的影响。
+- 普通摄像头眼动追踪的准确度远低于实验室级眼动仪。
+- 大幅调整浏览器窗口尺寸可能降低准确度；调整后应重新校准。
+- 在性能较低的笔记本电脑上，首次加载模型可能需要数秒。
+- 本应用主要针对笔记本电脑和台式电脑设计。
+- 本原型并非医疗设备。
+
+### 故障排除
+
+如果摄像头设置界面一直停留，请在 Chrome 中按 **Ctrl+Shift+R** 强制刷新。视频画面可能先于人脸特征模型完成加载。如果仍未进入校准界面，请确认 `http://localhost:8000/mediapipe/face_mesh/face_mesh.binarypb` 可以打开且没有出现 404 错误。
+
+### 项目结构
+
+- `index.html` — 页面、Canvas 画布和界面控件
+- `style.css` — 响应式视觉设计
+- `game.js` — 状态管理、视线滤波、游戏模拟、碰撞检测和绘制
+- `gaze.js` — WebGazer 生命周期、校准和追踪状态
+- `webgazer.js` — 项目内置的 WebGazer 3.5.3 浏览器版本
+- `mediapipe/face_mesh/` — 匹配的 MediaPipe 模型和 WASM 运行文件
+- `.github/workflows/pages.yml` — 自动部署到 GitHub Pages
+- `.nojekyll` — 纯静态网站配置
+- `THIRD_PARTY_NOTICES.md` 和 `LICENSES/` — 第三方声明与许可证
+
+未来版本可以加入定时远眺休息、主动眨眼机制，以及针对不同视线移动模式设计的障碍布局。
