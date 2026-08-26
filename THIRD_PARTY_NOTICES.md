@@ -1,6 +1,6 @@
 # Third-party notices
 
-Gaze Flappy vendors its WebGazer runtime and loads the pinned MediaPipe Tasks Vision blink runtime from a CDN inside an isolated iframe context.
+SightFlight vendors its WebGazer runtime and loads the pinned MediaPipe Tasks Vision blink runtime from a CDN inside an isolated iframe context.
 
 ## WebGazer.js 3.5.3
 

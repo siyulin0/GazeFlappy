@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Gaze Flappy — an experimental webcam gaze-controlled visual-break game.">
-  <title>Gaze Flappy</title>
+  <meta name="description" content="SightFlight — an experimental webcam eye-controlled flying game.">
+  <title>SightFlight</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
@@ -15,9 +15,9 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" aria-label="Gaze Flappy home">
+      <a class="brand" href="#" aria-label="SightFlight home">
         <span class="brand-mark" aria-hidden="true">◉</span>
-        <span>Gaze Flappy</span>
+        <span>SightFlight</span>
       </a>
       <div class="top-actions">
         <span id="controlBadge" class="badge">Control: Choose a mode</span>
@@ -26,13 +26,13 @@
     </header>
 
     <section id="stage" class="stage" aria-live="polite">
-      <canvas id="gameCanvas" width="1280" height="720" aria-label="Gaze Flappy game canvas"></canvas>
+      <canvas id="gameCanvas" width="1280" height="720" aria-label="SightFlight game canvas"></canvas>
       <div class="sky-noise" aria-hidden="true"></div>
 
       <section id="welcomeScreen" class="screen welcome-screen">
         <div class="hero-copy">
           <p class="eyebrow">A webcam gaze experiment</p>
-          <h1>Gaze <span>Flappy</span></h1>
+          <h1>Sight<span>Flight</span></h1>
           <p class="lede">Choose how your eyes control the bird.</p>
           <ol class="steps">
             <li><b>1</b><span>Enable your webcam</span></li>
@@ -115,7 +115,7 @@
       <section id="pauseScreen" class="screen centered overlay hidden"><div class="card compact-card"><p class="eyebrow">Round paused</p><h2 id="pauseTitle">Take your time</h2><p id="pauseMessage">Your score and obstacles are frozen.</p><div class="button-row"><button id="resumeButton" class="button primary" type="button">Resume</button><button class="button secondary back-to-menu-button" type="button">Back to Menu</button></div></div></section>
       <section id="gameOverScreen" class="screen centered overlay hidden"><div class="card compact-card result-card"><div class="result-icon">★</div><p class="eyebrow">Round complete</p><h2>Nice glide!</h2><div class="final-score"><span>Score</span><strong id="finalScore">0</strong><small id="bestScore">Best: 0</small></div><div class="button-row"><button id="restartButton" class="button primary" type="button">Play Again</button><button id="backToMenuButton" class="button secondary" type="button">Back to Menu</button></div></div></section>
 
-      <dialog id="howDialog"><button id="closeHowButton" class="dialog-close" aria-label="Close">×</button><p class="eyebrow">How it works</p><h2>Your gaze becomes a flight path</h2><div class="flow"><span>Webcam</span><b>→</b><span>Gaze estimate</span><b>→</b><span>Smoothing</span><b>→</b><span>Bird</span></div><p>WebGazer estimates where you are looking using video processed in your browser. We smooth the vertical estimate and let the bird gradually follow it—there is no click-to-flap physics.</p><p class="fine-print">Gaze Flappy is an experimental visual-break game that encourages users to vary their gaze direction after prolonged screen work. It is not a medical device.</p></dialog>
+      <dialog id="howDialog"><button id="closeHowButton" class="dialog-close" aria-label="Close">×</button><p class="eyebrow">How it works</p><h2>Your gaze becomes a flight path</h2><div class="flow"><span>Webcam</span><b>→</b><span>Gaze estimate</span><b>→</b><span>Smoothing</span><b>→</b><span>Bird</span></div><p>WebGazer estimates where you are looking using video processed in your browser. We smooth the vertical estimate and let the bird gradually follow it—there is no click-to-flap physics.</p><p class="fine-print">SightFlight is an experimental visual-break game that encourages users to vary their gaze direction after prolonged screen work. It is not a medical device.</p></dialog>
     </section>
 
     <footer><span>Experimental interaction prototype</span><span>Camera processing stays on this device</span></footer>
