@@ -5,6 +5,7 @@
 const GAZE_SMOOTHING = 0.11;
 const GAZE_DEAD_ZONE = 28;
 const BIRD_FOLLOW_SPEED = 5.2;
+const GAZE_CONTROL_HZ = 10;
 const TRACKING_LOSS_MS = 1600;
 const CALIBRATION_CLICKS = 3;
 
@@ -25,14 +26,33 @@ let keyDirection = 0;
 let calibrationCounts = Array(9).fill(0);
 let validationTimer = null;
 let autoPausedForGaze = false;
+let gazeYSamples = [];
+let latestMedianControlY = null;
+let lastGazeControlAt = performance.now();
 
 const game = {width:1280,height:720,bird:{x:270,y:360,r:24,targetY:360},pipes:[],score:0,best:Number(localStorage.getItem('gazeFlappyBest')||0),elapsed:0,spawnTimer:0};
 const gaze = new window.GazeController(({x,y}) => {
-  targetViewportY = y;
+  if (state === STATES.PLAYING && controlMode === 'gaze') gazeYSamples.push(y);
   if (!Number.isFinite(smoothedViewportY)) smoothedViewportY = y;
   $('gazeCursor').style.left = `${x}px`;
   $('gazeCursor').style.top = `${y}px`;
 });
+
+function resetGazeControlWindow(now=performance.now()) {
+  gazeYSamples = [];
+  lastGazeControlAt = now;
+}
+
+function updateGazeControlTarget(now) {
+  if (now-lastGazeControlAt < 1000/GAZE_CONTROL_HZ) return;
+  lastGazeControlAt = now;
+  if (!gazeYSamples.length) return;
+  const sorted = gazeYSamples.slice().sort((a,b)=>a-b);
+  const middle = Math.floor(sorted.length/2);
+  latestMedianControlY = sorted.length%2 ? sorted[middle] : (sorted[middle-1]+sorted[middle])/2;
+  targetViewportY = latestMedianControlY;
+  gazeYSamples = [];
+}
 
 function setState(next) {
   state = next;
@@ -55,6 +75,7 @@ function resetGame() {
   game.bird = {x:Math.max(120,game.width*.22),y:game.height*.5,r:22,targetY:game.height*.5};
   game.pipes=[]; game.score=0; game.elapsed=0; game.spawnTimer=0.8;
   smoothedViewportY = innerHeight/2; targetViewportY=smoothedViewportY;
+  latestMedianControlY=null; resetGazeControlWindow();
   $('scoreValue').textContent='0'; autoPausedForGaze=false;
 }
 
@@ -73,6 +94,7 @@ function friendlyCameraError(error) {
 
 function beginCalibration(clear=true) {
   if (clear) gaze.recalibrate();
+  resetGazeControlWindow(); latestMedianControlY=null;
   calibrationCounts=Array(9).fill(0); setState(STATES.CALIBRATION); gaze.setPreview(true);
   $('calibrationTitle').textContent='Look at each dot and click'; $('calibrationHint').classList.remove('hidden');
   $('calibrationPoints').classList.remove('hidden'); $('validationPanel').classList.add('hidden');
@@ -95,14 +117,15 @@ function startValidation(){
   const positions=[[15,18],[72,20],[48,47],[20,70],[78,68]];let i=0;const move=()=>{const [x,y]=positions[i++%positions.length];$('validationTarget').style.left=`${x}%`;$('validationTarget').style.top=`${y}%`};move();validationTimer=setInterval(move,1400);
 }
 
-function setKeyboardMode(start=true){controlMode='keyboard';$('controlBadge').textContent='Control: Keyboard';$('modeButton').textContent='Use eye tracking';gaze.setPreview(false);if(start)startRound()}
-function toggleMode(){if(controlMode==='gaze'){setKeyboardMode(false)}else if(gaze.initialized){controlMode='gaze';$('controlBadge').textContent='Control: Eye Tracking';$('modeButton').textContent='Use keyboard'}else enableTracking()}
+function setKeyboardMode(start=true){controlMode='keyboard';resetGazeControlWindow();$('controlBadge').textContent='Control: Keyboard';$('modeButton').textContent='Use eye tracking';gaze.setPreview(false);if(start)startRound()}
+function toggleMode(){if(controlMode==='gaze'){setKeyboardMode(false)}else if(gaze.initialized){controlMode='gaze';resetGazeControlWindow();$('controlBadge').textContent='Control: Eye Tracking';$('modeButton').textContent='Use keyboard'}else enableTracking()}
 
 function spawnPipe(){const gap=Math.max(205,game.height*(.38-Math.min(game.elapsed/240,.07)));const margin=90;const center=margin+gap/2+Math.random()*(game.height-2*margin-gap);game.pipes.push({x:game.width+45,w:78,gapTop:center-gap/2,gapBottom:center+gap/2,scored:false})}
 function update(dt){
   if(state!==STATES.PLAYING)return;
   game.elapsed+=dt;
   if(controlMode==='gaze'){
+    updateGazeControlTarget(performance.now());
     const fresh=gaze.isFresh(TRACKING_LOSS_MS);$('debugStatus').textContent=fresh?'tracking':'lost';
     if(!fresh && gaze.lastSampleAt){autoPausedForGaze=true;pauseGame('Eye tracking lost','Look toward the screen. The round will resume automatically when tracking returns.');return}
     smoothedViewportY=GAZE_SMOOTHING*targetViewportY+(1-GAZE_SMOOTHING)*smoothedViewportY;
@@ -117,8 +140,8 @@ function update(dt){
 }
 
 function collides(){const b=game.bird;const forgivingR=b.r*.72;if(b.y-forgivingR<0||b.y+forgivingR>game.height)return true;return game.pipes.some(p=>b.x+forgivingR>p.x&&b.x-forgivingR<p.x+p.w&&(b.y-forgivingR<p.gapTop||b.y+forgivingR>p.gapBottom))}
-function pauseGame(title='Round paused',message='Your score and obstacles are frozen.'){if(state!==STATES.PLAYING)return;previousState=state;$('pauseTitle').textContent=title;$('pauseMessage').textContent=message;setState(STATES.PAUSED)}
-function resumeGame(){if(state!==STATES.PAUSED)return;if(controlMode==='gaze'&&!gaze.isFresh(TRACKING_LOSS_MS))return;autoPausedForGaze=false;lastFrame=performance.now();setState(STATES.PLAYING)}
+function pauseGame(title='Round paused',message='Your score and obstacles are frozen.'){if(state!==STATES.PLAYING)return;previousState=state;resetGazeControlWindow();$('pauseTitle').textContent=title;$('pauseMessage').textContent=message;setState(STATES.PAUSED)}
+function resumeGame(){if(state!==STATES.PAUSED)return;if(controlMode==='gaze'&&!gaze.isFresh(TRACKING_LOSS_MS))return;autoPausedForGaze=false;lastFrame=performance.now();resetGazeControlWindow(lastFrame);setState(STATES.PLAYING)}
 function endGame(){game.best=Math.max(game.best,game.score);localStorage.setItem('gazeFlappyBest',game.best);$('finalScore').textContent=game.score;$('bestScore').textContent=`Best: ${game.best}`;setState(STATES.GAME_OVER)}
 
 function drawBackground(t){
@@ -132,7 +155,7 @@ function roundedRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fil
 function drawPipe(p){ctx.lineWidth=4;ctx.strokeStyle='#17343d';ctx.fillStyle='#55c88b';roundedRect(p.x,-10,p.w,p.gapTop+10,6);roundedRect(p.x,p.gapBottom,p.w,game.height-p.gapBottom+15,6);ctx.fillStyle='#83dda3';ctx.fillRect(p.x+10,0,12,p.gapTop-4);ctx.fillRect(p.x+10,p.gapBottom+4,12,game.height-p.gapBottom);ctx.fillStyle='#5ed091';roundedRect(p.x-10,p.gapTop-28,p.w+20,28,5);roundedRect(p.x-10,p.gapBottom,p.w+20,28,5)}
 function drawBird(){const b=game.bird;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.18,Math.min(.18,(b.targetY-b.y)*.004)));ctx.lineWidth=4;ctx.strokeStyle='#17343d';ctx.fillStyle='#ffd762';ctx.beginPath();ctx.ellipse(0,0,31,24,0,0,7);ctx.fill();ctx.stroke();ctx.fillStyle='#f09a64';ctx.beginPath();ctx.ellipse(-15,12,20,11,-.45,0,7);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(14,-7,10,0,7);ctx.fill();ctx.stroke();ctx.fillStyle='#17343d';ctx.beginPath();ctx.arc(17,-7,3,0,7);ctx.fill();ctx.fillStyle='#ff806f';ctx.beginPath();ctx.roundRect(25,-1,18,8,3);ctx.fill();ctx.stroke();ctx.restore()}
 function render(now){drawBackground(now);game.pipes.forEach(drawPipe);drawBird()}
-function updateDebug(){const r=gaze.raw;$('debugRawX').textContent=Number.isFinite(r.x)?r.x.toFixed(0):'—';$('debugRawY').textContent=Number.isFinite(r.y)?r.y.toFixed(0):'—';$('debugSmoothY').textContent=Number.isFinite(smoothedViewportY)?smoothedViewportY.toFixed(0):'—';$('debugBirdY').textContent=game.bird.y.toFixed(0);$('debugFps').textContent=fps.toFixed(0)}
+function updateDebug(){const r=gaze.raw;$('debugRawX').textContent=Number.isFinite(r.x)?r.x.toFixed(0):'—';$('debugRawY').textContent=Number.isFinite(r.y)?r.y.toFixed(0):'—';$('debugGazeSamples').textContent=gazeYSamples.length;$('debugMedianY').textContent=Number.isFinite(latestMedianControlY)?latestMedianControlY.toFixed(0):'—';$('debugControlHz').textContent=GAZE_CONTROL_HZ;$('debugSmoothY').textContent=Number.isFinite(smoothedViewportY)?smoothedViewportY.toFixed(0):'—';$('debugTargetY').textContent=game.bird.targetY.toFixed(0);$('debugBirdY').textContent=game.bird.y.toFixed(0);$('debugFps').textContent=fps.toFixed(0)}
 function loop(now){const dt=Math.min(.05,(now-lastFrame)/1000||0);lastFrame=now;fps=fps*.92+(1/Math.max(dt,.001))*.08;update(dt);render(now);updateDebug();if(autoPausedForGaze&&state===STATES.PAUSED&&gaze.isFresh(500))resumeGame();requestAnimationFrame(loop)}
 
 $('enableTrackingButton').addEventListener('click',enableTracking);$('retryCameraButton').addEventListener('click',enableTracking);$('keyboardDemoButton').addEventListener('click',()=>setKeyboardMode());$('cameraKeyboardButton').addEventListener('click',()=>setKeyboardMode());
