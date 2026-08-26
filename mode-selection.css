@@ -79,3 +79,32 @@
   outline: 3px solid var(--coral);
   outline-offset: 3px;
 }
+
+#howDialog {
+  width: min(760px, calc(100% - 32px));
+  max-height: 88vh;
+  overflow: auto;
+}
+
+.how-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.how-modes section {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #f8fcf9;
+}
+
+.how-modes h3 { margin: 0; font-size: 20px; }
+.how-modes p { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.how-modes .flow { justify-content: flex-start; margin: 14px 0 0; gap: 7px; }
+.how-modes .flow span { padding: 7px 9px; }
+
+@media (max-width: 650px) {
+  .how-modes { grid-template-columns: 1fr; }
+}
