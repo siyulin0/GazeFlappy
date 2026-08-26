@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>.blink-readiness{display:grid;gap:8px;margin:22px auto;padding:18px;border:1px solid var(--line);border-radius:14px;background:#f5fffaf0}.blink-readiness strong{font-size:22px}.blink-readiness span{color:var(--muted);font-weight:800}.button:disabled{cursor:not-allowed;opacity:.45;transform:none;box-shadow:none}</style>
 </head>
 <body>
   <main class="app-shell">
@@ -31,7 +32,7 @@
         <div class="hero-copy">
           <p class="eyebrow">A webcam gaze experiment</p>
           <h1>Gaze <span>Flappy</span></h1>
-          <p class="lede">Control the bird with your eyes.</p>
+          <p class="lede">Choose how your eyes control the bird.</p>
           <ol class="steps">
             <li><b>1</b><span>Enable your webcam</span></li>
             <li><b>2</b><span>Calibrate eye tracking</span></li>
@@ -40,9 +41,11 @@
           </ol>
           <p class="privacy"><span aria-hidden="true">◆</span> Camera images are processed locally for gaze estimation and are not recorded or uploaded.</p>
           <div class="button-row">
-            <button id="enableTrackingButton" class="button primary" type="button">Enable Eye Tracking <span>→</span></button>
+            <button id="enableTrackingButton" class="button primary" type="button">Gaze Mode <span>→</span></button>
+            <button id="enableBlinkButton" class="button secondary" type="button">Blink Mode</button>
             <button id="howButton" class="button secondary" type="button">How It Works</button>
           </div>
+          <p class="fine-print"><b>Gaze Mode:</b> look up and down. <b>Blink Mode:</b> blink normally to flap.</p>
           <button id="keyboardDemoButton" class="text-button" type="button">Or try with keyboard controls</button>
         </div>
         <div class="hero-art" aria-hidden="true">
@@ -50,6 +53,16 @@
           <div class="hero-bird"><i></i><em></em><b></b></div>
           <div class="gaze-path"><span></span><span></span><span></span></div>
           <div class="pipe-art top"></div><div class="pipe-art bottom"></div>
+        </div>
+      </section>
+
+      <section id="blinkTestScreen" class="screen centered hidden">
+        <div class="card compact-card">
+          <p class="eyebrow">Blink Mode setup</p><h2>Blink Test</h2>
+          <p>Blink normally a few times while facing the camera.</p>
+          <div class="blink-readiness"><strong id="blinkTestEyes">Eyes: WAITING</strong><span id="blinkTestCount">Blinks detected: 0 / 3</span></div>
+          <p id="blinkTestStatus" class="fine-print">Loading face tracking…</p>
+          <div class="button-row"><button id="startBlinkButton" class="button primary" type="button" disabled>Start Blink Mode <span>→</span></button><button id="retryBlinkButton" class="button secondary" type="button">Retry Test</button></div>
         </div>
       </section>
 
@@ -88,13 +101,13 @@
         <div class="hud-options">
           <label><input id="gazeToggle" type="checkbox"><span></span> Show gaze cursor</label>
           <label><input id="debugToggle" type="checkbox"><span></span> Debug</label>
-          <button id="modeButton" class="mini-button" type="button">Use keyboard</button>
+          <button id="modeButton" class="mini-button" type="button">Use Blink Mode</button>
         </div>
       </div>
 
       <div id="gazeCursor" class="gaze-cursor hidden" aria-hidden="true"></div>
       <div id="trackingLost" class="tracking-lost hidden"><span></span> Eye tracking lost — look toward the screen.</div>
-      <aside id="debugPanel" class="debug-panel hidden"><b>Tracking telemetry</b><dl><dt>Raw X</dt><dd id="debugRawX">—</dd><dt>Raw Y</dt><dd id="debugRawY">—</dd><dt>Window samples</dt><dd id="debugGazeSamples">0</dd><dt>Median Y</dt><dd id="debugMedianY">—</dd><dt>Control Hz</dt><dd id="debugControlHz">10</dd><dt>Smoothed Y</dt><dd id="debugSmoothY">—</dd><dt>Bird target Y</dt><dd id="debugTargetY">—</dd><dt>Bird Y</dt><dd id="debugBirdY">—</dd><dt>FPS</dt><dd id="debugFps">—</dd><dt>Status</dt><dd id="debugStatus">idle</dd></dl></aside>
+      <aside id="debugPanel" class="debug-panel hidden"><b>Tracking telemetry</b><dl><dt>Raw X</dt><dd id="debugRawX">—</dd><dt>Raw Y</dt><dd id="debugRawY">—</dd><dt>Window samples</dt><dd id="debugGazeSamples">0</dd><dt>Median Y</dt><dd id="debugMedianY">—</dd><dt>Control Hz</dt><dd id="debugControlHz">10</dd><dt>Smoothed Y</dt><dd id="debugSmoothY">—</dd><dt>Bird target Y</dt><dd id="debugTargetY">—</dd><dt>Blink left</dt><dd id="debugBlinkLeft">—</dd><dt>Blink right</dt><dd id="debugBlinkRight">—</dd><dt>Blink state</dt><dd id="debugBlinkState">OPEN</dd><dt>Close / open</dt><dd id="debugBlinkThresholds">.55 / .32</dd><dt>Closed ms</dt><dd id="debugClosedMs">0</dd><dt>Blinks / flaps</dt><dd id="debugBlinkCounts">0 / 0</dd><dt>Bird Y</dt><dd id="debugBirdY">—</dd><dt>Bird velocity</dt><dd id="debugBirdVelocity">0</dd><dt>FPS</dt><dd id="debugFps">—</dd><dt>Status</dt><dd id="debugStatus">idle</dd></dl></aside>
 
       <section id="readyScreen" class="screen centered hidden"><div class="card compact-card"><p class="eyebrow">Calibration complete</p><h2>Ready to glide?</h2><p>Look toward the upper or lower part of the screen. The bird will smoothly follow your gaze.</p><button id="readyStartButton" class="button primary" type="button">Start Game <span>→</span></button></div></section>
       <section id="pauseScreen" class="screen centered overlay hidden"><div class="card compact-card"><p class="eyebrow">Round paused</p><h2 id="pauseTitle">Take your time</h2><p id="pauseMessage">Your score and obstacles are frozen.</p><button id="resumeButton" class="button primary" type="button">Resume</button></div></section>
@@ -108,6 +121,7 @@
   <!-- Vendored official WebGazer 3.5.3 release for private, reliable loading. -->
   <script src="webgazer.js"></script>
   <script src="gaze.js"></script>
+  <script src="blink.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

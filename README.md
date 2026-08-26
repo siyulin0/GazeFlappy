@@ -6,7 +6,7 @@
 
 ### About
 
-Gaze Flappy is an experimental browser game that explores webcam-based eye tracking as a playful interaction method. Using [WebGazer.js](https://webgazer.cs.brown.edu/), it estimates the player’s gaze locally in the browser and translates vertical gaze movement into smooth bird control. Look up or down to guide the bird through obstacles—no click-to-flap controls are used.
+Gaze Flappy is an experimental browser game with two webcam-based controls: WebGazer translates vertical gaze movement into smooth bird control, while MediaPipe Face Landmarker recognizes normal binocular blinks as Flappy-style flap inputs.
 
 Friends can play from the hosted link without installing anything or running a local server. Gaze Flappy is an interaction prototype, not a medical device, and makes no claim to treat eye strain or improve vision.
 
@@ -20,7 +20,7 @@ Friends can play from the hosted link without installing anything or running a l
 
 ### Play online
 
-Open [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/), click **Enable Eye Tracking**, and allow camera access.
+Open [https://siyulin0.github.io/GazeFlappy/](https://siyulin0.github.io/GazeFlappy/), choose **Gaze Mode** or **Blink Mode**, and allow camera access.
 
 ### Run locally
 
@@ -36,10 +36,12 @@ Alternatively, use the VS Code **Live Server** extension and choose **Open with 
 
 ### Controls and game flow
 
-1. Click **Enable Eye Tracking**. Camera permission is requested only after this click.
+1. Choose **Gaze Mode** or **Blink Mode**. Camera permission is requested only after this choice.
 2. Look directly at each of the nine calibration targets and click each target three times.
 3. During validation, follow the mint target. The orange cursor shows the estimated gaze location.
 4. Start the game and look higher or lower on the screen to guide the bird.
+
+Blink Mode skips gaze calibration. Complete the three-blink readiness test, then blink normally to flap while gravity pulls the bird downward.
 
 - **Pause** freezes the round. Hiding the browser tab also pauses it.
 - Tracking loss longer than 1.6 seconds pauses the game; it resumes when tracking returns.
@@ -51,7 +53,7 @@ Alternatively, use the VS Code **Live Server** extension and choose **Open with 
 
 ### Privacy
 
-Camera images are processed locally in the browser for gaze estimation. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer and the required MediaPipe model files are bundled with this repository; only the optional Google font is fetched remotely.
+Camera images are processed locally in the browser. Gaze Flappy does not intentionally record, store, or upload camera images. Calibration persistence is disabled. WebGazer's Face Mesh runtime is bundled; Blink Mode loads the pinned MediaPipe Tasks Vision 1.0.1 runtime and official Face Landmarker model from their CDNs.
 
 ### Publish on GitHub Pages
 
@@ -94,13 +96,15 @@ If camera setup appears stuck, hard-refresh Chrome with **Ctrl+Shift+R**. The vi
 - `style.css` — responsive visual design
 - `game.js` — state machine, gaze filtering, simulation, collision, and rendering
 - `gaze.js` — WebGazer lifecycle, calibration, and tracking status
+- `blink.js` — MediaPipe Face Landmarker lifecycle and blink state machine
+- `blink.test.js` — deterministic blink state-machine tests
 - `webgazer.js` — vendored WebGazer 3.5.3 browser bundle
 - `mediapipe/face_mesh/` — matching MediaPipe model and WASM runtime
 - `.github/workflows/pages.yml` — automatic GitHub Pages deployment
 - `.nojekyll` — plain static-site configuration
 - `THIRD_PARTY_NOTICES.md` and `LICENSES/` — third-party notices and licenses
 
-Future extensions can add timed look-away breaks, intentional blink mechanics, and obstacle patterns designed around different gaze movements.
+Future extensions can add timed look-away breaks and obstacle patterns designed around different eye interactions.
 
 ---
 

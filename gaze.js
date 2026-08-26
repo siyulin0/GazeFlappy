@@ -58,6 +58,14 @@ class GazeController {
     this.setWebGazerVisibility(visible);
   }
 
+  async pause() {
+    if (this.initialized) await window.webgazer?.pause();
+  }
+
+  getVideoElement() {
+    return document.getElementById('webgazerVideoFeed');
+  }
+
   setWebGazerVisibility(visible) {
     const wg = window.webgazer;
     // showVideo is the official API; showVideoPreview exists in some builds.

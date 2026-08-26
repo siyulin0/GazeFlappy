@@ -1,6 +1,6 @@
 # Third-party notices
 
-Gaze Flappy vendors browser runtime files so the hosted game does not depend on a package manager or CDN at play time.
+Gaze Flappy vendors its WebGazer runtime and loads the pinned MediaPipe Tasks Vision blink runtime from a CDN without a package manager.
 
 ## WebGazer.js 3.5.3
 
@@ -17,3 +17,11 @@ Gaze Flappy vendors browser runtime files so the hosted game does not depend on 
 - Vendored files: `mediapipe/face_mesh/`
 
 The upstream notices and complete GPLv3 and Apache 2.0 license texts are included in the `LICENSES/` directory. These notices do not replace the upstream license terms.
+
+## MediaPipe Tasks Vision 1.0.1
+
+- Package: `@mediapipe/tasks-vision`
+- Face Landmarker model: `face_landmarker/float16/1`
+- Copyright: Google LLC
+- License: Apache License 2.0
+- Loaded by `blink.js` from jsDelivr and Google's official model storage
