@@ -13,11 +13,11 @@ const BLINK_FLAP_VELOCITY = -390;
 const BLINK_MAX_FALL_SPEED = 330;
 const BLINK_TEST_REQUIRED = 3;
 
-const STATES = Object.freeze({WELCOME:'WELCOME',CAMERA_SETUP:'CAMERA_SETUP',CALIBRATION:'CALIBRATION',BLINK_TEST:'BLINK_TEST',READY:'READY',PLAYING:'PLAYING',PAUSED:'PAUSED',GAME_OVER:'GAME_OVER'});
+const STATES = Object.freeze({WELCOME:'WELCOME',CAMERA_SETUP:'CAMERA_SETUP',CALIBRATION:'CALIBRATION',BLINK_TEST:'BLINK_TEST',BLINK_READY:'BLINK_READY',READY:'READY',PLAYING:'PLAYING',PAUSED:'PAUSED',GAME_OVER:'GAME_OVER'});
 const $ = (id) => document.getElementById(id);
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
-const screens = {WELCOME:$('welcomeScreen'),CAMERA_SETUP:$('cameraScreen'),CALIBRATION:$('calibrationScreen'),BLINK_TEST:$('blinkTestScreen'),READY:$('readyScreen'),PAUSED:$('pauseScreen'),GAME_OVER:$('gameOverScreen')};
+const screens = {WELCOME:$('welcomeScreen'),CAMERA_SETUP:$('cameraScreen'),CALIBRATION:$('calibrationScreen'),BLINK_TEST:$('blinkTestScreen'),BLINK_READY:$('blinkReadyScreen'),READY:$('readyScreen'),PAUSED:$('pauseScreen'),GAME_OVER:$('gameOverScreen')};
 
 let state = STATES.WELCOME;
 let previousState = null;
@@ -266,7 +266,7 @@ let modeSelectionPending=false;
 function selectModeOption(button,action){if(modeSelectionPending)return;modeSelectionPending=true;document.querySelectorAll('.mode-option').forEach(option=>{const selected=option===button;option.classList.toggle('is-selected',selected);option.setAttribute('aria-pressed',String(selected))});button.classList.add('is-pressing');setTimeout(()=>{button.classList.remove('is-pressing');modeSelectionPending=false;action()},110)}
 $('enableTrackingButton').addEventListener('click',event=>selectModeOption(event.currentTarget,enableTracking));$('enableBlinkButton').addEventListener('click',event=>selectModeOption(event.currentTarget,enableBlinkMode));$('retryCameraButton').addEventListener('click',()=>controlMode==='blink'?enableBlinkMode():enableTracking());$('keyboardDemoButton').addEventListener('click',()=>setKeyboardMode());$('cameraKeyboardButton').addEventListener('click',()=>setKeyboardMode());
 $('howButton').addEventListener('click',()=>$('howDialog').showModal());$('closeHowButton').addEventListener('click',()=>$('howDialog').close());
-$('startGameButton').addEventListener('click',()=>{gazeCalibrated=true;gaze.setPreview(false);setState(STATES.READY)});$('readyStartButton').addEventListener('click',startRound);$('startBlinkButton').addEventListener('click',startRound);$('retryBlinkButton').addEventListener('click',beginBlinkTest);$('recalibrateButton').addEventListener('click',()=>beginCalibration(true));$('restartButton').addEventListener('click',startRound);$('backToMenuButton').addEventListener('click',backToMenu);
+$('startGameButton').addEventListener('click',()=>{gazeCalibrated=true;gaze.setPreview(false);setState(STATES.READY)});$('readyStartButton').addEventListener('click',startRound);$('readyRecalibrateButton').addEventListener('click',()=>beginCalibration(true));$('startBlinkButton').addEventListener('click',()=>setState(STATES.BLINK_READY));$('blinkReadyStartButton').addEventListener('click',startRound);$('blinkReadyRetryButton').addEventListener('click',beginBlinkTest);$('retryBlinkButton').addEventListener('click',beginBlinkTest);$('recalibrateButton').addEventListener('click',()=>beginCalibration(true));$('restartButton').addEventListener('click',startRound);$('backToMenuButton').addEventListener('click',backToMenu);
 document.querySelectorAll('.back-to-menu-button').forEach(button=>button.addEventListener('click',backToMenu));
 $('pauseButton').addEventListener('click',()=>state===STATES.PLAYING?pauseGame():resumeGame());$('resumeButton').addEventListener('click',resumeGame);$('modeButton').addEventListener('click',toggleMode);
 $('gazeToggle').addEventListener('change',e=>$('gazeCursor').classList.toggle('hidden',!e.target.checked));$('debugToggle').addEventListener('change',e=>$('debugPanel').classList.toggle('hidden',!e.target.checked));
