@@ -30,6 +30,8 @@ WebGazer's Kalman filter is enabled. SightFlight then aggregates recent gaze-Y s
 
 ### Blink Mode
 
+Blink Mode follows the familiar Flappy Bird-style gameplay loop, with eye blinks replacing button presses or screen taps: each blink makes the bird flap upward while gravity pulls it downward.
+
 Blink Mode uses MediaPipe Tasks Vision Face Landmarker blendshapes. The bird falls under gravity, and each accepted binocular blink applies one upward flap impulse.
 
 The detector follows an `OPEN → CLOSED → OPEN` cycle. Both eyes must satisfy the blink conditions, and reopening re-arms the detector, so holding the eyes closed does not repeatedly flap.
@@ -212,6 +214,8 @@ Possible future experiments—not currently implemented—include:
 WebGazer 的卡尔曼滤波已启用。视控飞鸟还会对近期 Y 坐标样本取中位数，进行指数平滑，通过死区忽略微小目标变化，最后让飞鸟持续跟随处理后的目标位置。
 
 #### 眨眼模式
+
+眨眼模式采用类似《Flappy Bird》的经典玩法循环，但以眨眼取代按键或点击屏幕：每次眨眼都会让飞鸟向上拍动，而重力会使它持续下落。
 
 眨眼模式使用 MediaPipe Tasks Vision Face Landmarker 的面部表情系数。飞鸟受重力影响持续下落，每次被接受的双眼眨眼都会产生一次向上的拍动冲量。
 
